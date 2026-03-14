@@ -194,9 +194,10 @@ export default function GameCanvas() {
     resize();
     window.addEventListener('resize', resize);
 
-    let lastTime = 0;
+    let lastTime = -1;
 
     const loop = (time: number) => {
+      if (lastTime < 0) lastTime = time;
       const dt = Math.min(time - lastTime, 33);
       lastTime = time;
 
