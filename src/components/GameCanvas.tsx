@@ -54,11 +54,19 @@ export default function GameCanvas() {
   }, []);
 
   const lastClickRef = useRef(0);
+  const lastTouchRef = useRef(0);
 
   const handleCanvasInteraction = useCallback((e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    // Debounce to prevent double-fire from touch + click
     const now = Date.now();
-    if (now - lastClickRef.current < 100) return;
+    const isTouchEvent = 'changedTouches' in e || 'touches' in e;
+
+    if (isTouchEvent) {
+      lastTouchRef.current = now;
+    } else if (now - lastTouchRef.current < 450) {
+      return;
+    }
+
+    if (now - lastClickRef.current < 120) return;
     lastClickRef.current = now;
 
     if (currentDialogue) return;
