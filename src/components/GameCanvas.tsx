@@ -149,9 +149,13 @@ export default function GameCanvas() {
         { x: tileX, y: tileY }
       );
       if (path.length > 0) {
-        pathRef.current = path;
+        // Skip current tile to avoid micro-oscillation around start node
+        const walkPath = path.slice(1);
+        if (walkPath.length === 0) return;
+
+        pathRef.current = walkPath;
         pathIndexRef.current = 0;
-        targetRef.current = path[path.length - 1];
+        targetRef.current = walkPath[walkPath.length - 1];
       }
     }
   }, [currentDialogue, npcs]);
