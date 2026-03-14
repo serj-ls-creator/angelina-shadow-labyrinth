@@ -237,9 +237,11 @@ export default function GameCanvas() {
             targetRef.current = null;
           }
         } else {
+          const maxStep = PLAYER_SPEED * dt;
+          const step = Math.min(maxStep, dist);
           playerRef.current = {
-            x: playerRef.current.x + (dx / dist) * PLAYER_SPEED * dt,
-            y: playerRef.current.y + (dy / dist) * PLAYER_SPEED * dt,
+            x: playerRef.current.x + (dx / dist) * step,
+            y: playerRef.current.y + (dy / dist) * step,
           };
         }
       }
