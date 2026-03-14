@@ -120,13 +120,21 @@ export default function GameCanvas() {
         if (path.length > 0) {
           // Remove last step so we don't stand on NPC
           if (path.length > 1) path.pop();
-          pathRef.current = path;
+
+          // Skip current tile (first node is usually current position)
+          const walkPath = path.slice(1);
+          if (walkPath.length === 0) {
+            startDialogue(npc);
+            return;
+          }
+
+          pathRef.current = walkPath;
           pathIndexRef.current = 0;
-          targetRef.current = path[path.length - 1];
+          targetRef.current = walkPath[walkPath.length - 1];
           // Set a flag to interact after reaching
           setTimeout(() => {
             startDialogue(npc);
-          }, path.length * 120);
+          }, walkPath.length * 120);
         } else {
           startDialogue(npc);
         }
