@@ -53,21 +53,38 @@ export default function GameCanvas() {
     cameraRef.current = { x: sx, y: sy };
   }, []);
 
-  const handleCanvasClick = useCallback((e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+  const lastClickRef = useRef(0);
+
+  const handleCanvasInteraction = useCallback((e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    // Debounce to prevent double-fire from touch + click
+    const now = Date.now();
+    if (now - lastClickRef.current < 100) return;
+    lastClickRef.current = now;
+
     if (currentDialogue) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    // For touch events, prevent the subsequent click
+    if ('touches' in e) {
+      e.preventDefault();
+    }
+
     const rect = canvas.getBoundingClientRect();
     let clientX: number, clientY: number;
 
-    if ('touches' in e) {
+    if ('changedTouches' in e && e.changedTouches.length > 0) {
+      clientX = e.changedTouches[0].clientX;
+      clientY = e.changedTouches[0].clientY;
+    } else if ('touches' in e && e.touches.length > 0) {
       clientX = e.touches[0].clientX;
       clientY = e.touches[0].clientY;
-    } else {
+    } else if ('clientX' in e) {
       clientX = e.clientX;
       clientY = e.clientY;
+    } else {
+      return;
     }
 
     const canvasX = clientX - rect.left;
