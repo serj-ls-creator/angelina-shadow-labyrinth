@@ -54,11 +54,19 @@ export default function GameCanvas() {
   }, []);
 
   const lastClickRef = useRef(0);
+  const lastTouchRef = useRef(0);
 
   const handleCanvasInteraction = useCallback((e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    // Debounce to prevent double-fire from touch + click
     const now = Date.now();
-    if (now - lastClickRef.current < 100) return;
+    const isTouchEvent = 'changedTouches' in e || 'touches' in e;
+
+    if (isTouchEvent) {
+      lastTouchRef.current = now;
+    } else if (now - lastTouchRef.current < 450) {
+      return;
+    }
+
+    if (now - lastClickRef.current < 120) return;
     lastClickRef.current = now;
 
     if (currentDialogue) return;
@@ -67,7 +75,7 @@ export default function GameCanvas() {
     if (!canvas) return;
 
     // For touch events, prevent the subsequent click
-    if ('touches' in e) {
+    if (isTouchEvent) {
       e.preventDefault();
     }
 
@@ -112,13 +120,21 @@ export default function GameCanvas() {
         if (path.length > 0) {
           // Remove last step so we don't stand on NPC
           if (path.length > 1) path.pop();
-          pathRef.current = path;
+
+          // Skip current tile (first node is usually current position)
+          const walkPath = path.slice(1);
+          if (walkPath.length === 0) {
+            startDialogue(npc);
+            return;
+          }
+
+          pathRef.current = walkPath;
           pathIndexRef.current = 0;
-          targetRef.current = path[path.length - 1];
+          targetRef.current = walkPath[walkPath.length - 1];
           // Set a flag to interact after reaching
           setTimeout(() => {
             startDialogue(npc);
-          }, path.length * 120);
+          }, walkPath.length * 120);
         } else {
           startDialogue(npc);
         }
@@ -133,9 +149,13 @@ export default function GameCanvas() {
         { x: tileX, y: tileY }
       );
       if (path.length > 0) {
-        pathRef.current = path;
+        // Skip current tile to avoid micro-oscillation around start node
+        const walkPath = path.slice(1);
+        if (walkPath.length === 0) return;
+
+        pathRef.current = walkPath;
         pathIndexRef.current = 0;
-        targetRef.current = path[path.length - 1];
+        targetRef.current = walkPath[walkPath.length - 1];
       }
     }
   }, [currentDialogue, npcs]);
@@ -217,9 +237,11 @@ export default function GameCanvas() {
             targetRef.current = null;
           }
         } else {
+          const maxStep = PLAYER_SPEED * dt;
+          const step = Math.min(maxStep, dist);
           playerRef.current = {
-            x: playerRef.current.x + (dx / dist) * PLAYER_SPEED * dt,
-            y: playerRef.current.y + (dy / dist) * PLAYER_SPEED * dt,
+            x: playerRef.current.x + (dx / dist) * step,
+            y: playerRef.current.y + (dy / dist) * step,
           };
         }
       }
