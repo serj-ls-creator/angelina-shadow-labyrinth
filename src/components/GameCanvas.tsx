@@ -75,7 +75,7 @@ export default function GameCanvas() {
     if (!canvas) return;
 
     // For touch events, prevent the subsequent click
-    if ('touches' in e) {
+    if (isTouchEvent) {
       e.preventDefault();
     }
 
