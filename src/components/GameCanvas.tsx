@@ -296,8 +296,8 @@ export default function GameCanvas() {
       <canvas
         ref={canvasRef}
         className="absolute inset-0 cursor-pointer"
-        onClick={handleCanvasClick}
-        onTouchStart={handleCanvasClick}
+        onClick={handleCanvasInteraction}
+        onTouchEnd={handleCanvasInteraction}
       />
 
       <GameHUD
