@@ -115,7 +115,7 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
 
     // Windows for buildings
     if (tile === TileType.BUILDING || tile === TileType.BUILDING_RED || tile === TileType.BUILDING_LIGHT) {
-      drawWindows(ctx, sx, sy, height, tile);
+      drawWindows(ctx, sx, sy, height, tile, tileX, tileY);
     }
   }
 

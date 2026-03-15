@@ -81,11 +81,18 @@ export function getTileColor(tile: number): string {
 }
 
 // Building height for isometric rendering
-export function getBuildingHeight(tile: number): number {
+// Seeded variation for building heights
+function heightVariation(x: number, y: number): number {
+  const n = Math.sin(x * 73.1 + y * 157.3) * 43758.5453;
+  return (n - Math.floor(n)) * 15 - 5; // -5 to +10
+}
+
+export function getBuildingHeight(tile: number, x?: number, y?: number): number {
+  const vary = (x !== undefined && y !== undefined) ? heightVariation(x, y) : 0;
   switch (tile) {
-    case T.BUILDING: return 30;
-    case T.BUILDING_RED: return 25;
-    case T.BUILDING_LIGHT: return 35;
+    case T.BUILDING: return 30 + vary;
+    case T.BUILDING_RED: return 25 + vary;
+    case T.BUILDING_LIGHT: return 38 + vary;
     case T.TREE: return 20;
     default: return 0;
   }
