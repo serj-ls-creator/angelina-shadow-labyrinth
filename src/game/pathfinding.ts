@@ -1,5 +1,4 @@
 import { Position } from './types';
-import { mapTiles, MAP_WIDTH, MAP_HEIGHT, isWalkable } from './mapData';
 
 interface AStarNode {
   x: number;
@@ -14,14 +13,21 @@ function heuristic(a: Position, b: Position): number {
   return Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 }
 
-export function findPath(start: Position, end: Position): Position[] {
+export function findPath(
+  start: Position,
+  end: Position,
+  tiles: number[][],
+  mapWidth: number,
+  mapHeight: number,
+  isWalkableFn: (tile: number) => boolean
+): Position[] {
   const sx = Math.round(start.x);
   const sy = Math.round(start.y);
   const ex = Math.round(end.x);
   const ey = Math.round(end.y);
 
-  if (ex < 0 || ex >= MAP_WIDTH || ey < 0 || ey >= MAP_HEIGHT) return [];
-  if (!isWalkable(mapTiles[ey]?.[ex])) return [];
+  if (ex < 0 || ex >= mapWidth || ey < 0 || ey >= mapHeight) return [];
+  if (!isWalkableFn(tiles[ey]?.[ex])) return [];
 
   const openSet: AStarNode[] = [];
   const closedSet = new Set<string>();
@@ -40,7 +46,7 @@ export function findPath(start: Position, end: Position): Position[] {
   ];
 
   let iterations = 0;
-  const maxIterations = 2000;
+  const maxIterations = 5000;
 
   while (openSet.length > 0 && iterations < maxIterations) {
     iterations++;
@@ -64,13 +70,13 @@ export function findPath(start: Position, end: Position): Position[] {
       const ny = current.y + dir.y;
       const key = `${nx},${ny}`;
 
-      if (nx < 0 || nx >= MAP_WIDTH || ny < 0 || ny >= MAP_HEIGHT) continue;
+      if (nx < 0 || nx >= mapWidth || ny < 0 || ny >= mapHeight) continue;
       if (closedSet.has(key)) continue;
-      if (!isWalkable(mapTiles[ny][nx])) continue;
+      if (!isWalkableFn(tiles[ny][nx])) continue;
 
       // Diagonal movement check
       if (dir.x !== 0 && dir.y !== 0) {
-        if (!isWalkable(mapTiles[current.y][nx]) || !isWalkable(mapTiles[ny][current.x])) continue;
+        if (!isWalkableFn(tiles[current.y][nx]) || !isWalkableFn(tiles[ny][current.x])) continue;
       }
 
       const g = current.g + (dir.x !== 0 && dir.y !== 0 ? 1.414 : 1);
