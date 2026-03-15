@@ -43,7 +43,7 @@ export function renderMap(
   ctx.restore();
 }
 
-function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile: number) {
+function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile: number, tileX: number, tileY: number) {
   const color = getTileColor(tile);
   const height = getBuildingHeight(tile);
 
