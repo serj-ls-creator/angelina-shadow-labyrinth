@@ -20,6 +20,25 @@ export enum TileType {
   GRASS = 8,
   BRIDGE = 9,
   PARK = 10,
+  // Dungeon tiles
+  DUNGEON_FLOOR = 11,
+  DUNGEON_WALL = 12,
+  DUNGEON_DOOR = 13,
+  PORTAL = 14,
+  LAVA = 15,
+  CRYSTAL = 16,
+  DUNGEON_MOSS = 17,
+  DUNGEON_BONES = 18,
+}
+
+export type MapId = 'city' | 'dungeon';
+
+export interface Portal {
+  fromMap: MapId;
+  toMap: MapId;
+  fromPos: Position;
+  toPos: Position;  // where the player spawns in the target map
+  tilePos: Position; // the tile with the portal
 }
 
 export interface GameCharacter {

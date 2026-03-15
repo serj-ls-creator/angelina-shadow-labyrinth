@@ -1,5 +1,6 @@
-import { Position, TileType } from './types';
+import { Position, TileType, MapId } from './types';
 import { mapTiles, MAP_WIDTH, MAP_HEIGHT, TILE_SIZE, getTileColor, getBuildingHeight } from './mapData';
+import { dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, getDungeonTileColor, getDungeonBuildingHeight } from './dungeonMapData';
 
 const HALF_W = TILE_SIZE / 2;
 const HALF_H = TILE_SIZE / 4;
@@ -18,34 +19,62 @@ export function fromIso(sx: number, sy: number): { x: number; y: number } {
   };
 }
 
+function getMapData(mapId: MapId) {
+  if (mapId === 'dungeon') {
+    return { tiles: dungeonTiles, width: DUNGEON_WIDTH, height: DUNGEON_HEIGHT };
+  }
+  return { tiles: mapTiles, width: MAP_WIDTH, height: MAP_HEIGHT };
+}
+
 export function renderMap(
   ctx: CanvasRenderingContext2D,
   camera: Position,
   canvasW: number,
   canvasH: number,
-  zoom: number
+  zoom: number,
+  mapId: MapId = 'city'
 ) {
+  const { tiles, width, height } = getMapData(mapId);
+
   ctx.save();
   ctx.translate(canvasW / 2, canvasH / 3);
   ctx.scale(zoom, zoom);
   ctx.translate(-camera.x, -camera.y);
 
-  // Render tiles back to front for proper overlap
-  for (let y = 0; y < MAP_HEIGHT; y++) {
-    for (let x = 0; x < MAP_WIDTH; x++) {
-      const tile = mapTiles[y]?.[x] ?? 0;
+  // Calculate visible tile range for performance
+  const invZoom = 1 / zoom;
+  const viewW = canvasW * invZoom;
+  const viewH = canvasH * invZoom;
+  
+  // Rough bounds in iso space
+  const cx = camera.x;
+  const cy = camera.y;
+  const margin = 5;
+  
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const tile = tiles[y]?.[x] ?? 0;
+      if (tile === 0) continue;
+      
       const { sx, sy } = toIso(x, y);
       
-      renderTile(ctx, sx, sy, tile, x, y);
+      // Frustum culling
+      const screenX = (sx - cx) * zoom;
+      const screenY = (sy - cy) * zoom;
+      if (screenX < -canvasW && screenY < -canvasH) continue;
+      if (screenX > canvasW && screenY > canvasH) continue;
+      
+      renderTile(ctx, sx, sy, tile, x, y, mapId);
     }
   }
 
   ctx.restore();
 }
 
-function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile: number, tileX: number, tileY: number) {
-  const color = getTileColor(tile);
-  const height = getBuildingHeight(tile, tileX, tileY);
+function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile: number, tileX: number, tileY: number, mapId: MapId) {
+  const isDungeon = mapId === 'dungeon';
+  const color = isDungeon ? getDungeonTileColor(tile) : getTileColor(tile);
+  const height = isDungeon ? getDungeonBuildingHeight(tile) : getBuildingHeight(tile, tileX, tileY);
 
   // Draw flat tile (diamond)
   ctx.beginPath();
@@ -56,29 +85,71 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
   ctx.closePath();
   ctx.fillStyle = color;
   ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+  ctx.strokeStyle = isDungeon ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.15)';
   ctx.lineWidth = 0.5;
   ctx.stroke();
 
-  // Road markings
-  if (tile === TileType.ROAD) {
-    ctx.beginPath();
-    ctx.moveTo(sx - 2, sy - 2);
-    ctx.lineTo(sx + 2, sy + 2);
-    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
+  // City-specific decorations
+  if (!isDungeon) {
+    if (tile === TileType.ROAD) {
+      ctx.beginPath();
+      ctx.moveTo(sx - 2, sy - 2);
+      ctx.lineTo(sx + 2, sy + 2);
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    if (tile === TileType.WATER) {
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.beginPath();
+      ctx.ellipse(sx, sy, 8, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
-  // Water shimmer
-  if (tile === TileType.WATER) {
-    ctx.fillStyle = 'rgba(255,255,255,0.15)';
-    ctx.beginPath();
-    ctx.ellipse(sx, sy, 8, 3, 0, 0, Math.PI * 2);
-    ctx.fill();
+  // Dungeon-specific decorations
+  if (isDungeon) {
+    if (tile === TileType.LAVA) {
+      ctx.fillStyle = 'rgba(255,200,50,0.3)';
+      ctx.beginPath();
+      ctx.ellipse(sx, sy, 10, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      // Glow
+      ctx.fillStyle = 'rgba(255,100,0,0.15)';
+      ctx.beginPath();
+      ctx.ellipse(sx, sy, 14, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (tile === TileType.PORTAL) {
+      // Pulsing purple glow
+      ctx.fillStyle = 'rgba(156,39,176,0.4)';
+      ctx.beginPath();
+      ctx.ellipse(sx, sy, 16, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(200,100,255,0.3)';
+      ctx.beginPath();
+      ctx.ellipse(sx, sy, 10, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (tile === TileType.DUNGEON_BONES) {
+      ctx.fillStyle = 'rgba(200,200,180,0.5)';
+      ctx.fillRect(sx - 3, sy - 1, 6, 2);
+      ctx.fillRect(sx - 1, sy - 3, 2, 6);
+    }
+
+    if (tile === TileType.DUNGEON_MOSS) {
+      ctx.fillStyle = 'rgba(50,120,50,0.3)';
+      ctx.beginPath();
+      ctx.arc(sx - 3, sy, 3, 0, Math.PI * 2);
+      ctx.arc(sx + 2, sy - 1, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
-  // Draw building height
+  // Draw height (walls/buildings)
   if (height > 0 && tile !== TileType.TREE) {
     // Left face
     ctx.beginPath();
@@ -109,23 +180,28 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
     ctx.lineTo(sx, sy + HALF_H - height);
     ctx.lineTo(sx - HALF_W, sy - height);
     ctx.closePath();
-    ctx.fillStyle = lighten(color, 0.1);
+    ctx.fillStyle = isDungeon ? darken(color, 0.1) : lighten(color, 0.1);
     ctx.fill();
     ctx.stroke();
 
-    // Windows for buildings
-    if (tile === TileType.BUILDING || tile === TileType.BUILDING_RED || tile === TileType.BUILDING_LIGHT) {
+    // Windows for city buildings
+    if (!isDungeon && (tile === TileType.BUILDING || tile === TileType.BUILDING_RED || tile === TileType.BUILDING_LIGHT)) {
       drawWindows(ctx, sx, sy, height, tile, tileX, tileY);
+    }
+
+    // Crystal glow
+    if (tile === TileType.CRYSTAL) {
+      ctx.fillStyle = 'rgba(0,188,212,0.3)';
+      ctx.beginPath();
+      ctx.ellipse(sx, sy - height / 2, 12, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 
-  // Tree rendering
-  if (tile === TileType.TREE) {
-    // Trunk
+  // Tree rendering (city only)
+  if (tile === TileType.TREE && !isDungeon) {
     ctx.fillStyle = '#5c4033';
     ctx.fillRect(sx - 2, sy - 10, 4, 10);
-    
-    // Canopy - layered circles
     const colors = ['#1a5c28', '#2d7a3a', '#3d9a4a'];
     for (let i = 0; i < 3; i++) {
       ctx.beginPath();
@@ -134,9 +210,21 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
       ctx.fill();
     }
   }
+
+  // Portal indicator in city (on the red building near green zone)
+  if (!isDungeon && tile === TileType.BUILDING_RED && tileX === 23 && tileY === 6) {
+    // Glowing portal effect on the building
+    ctx.fillStyle = 'rgba(156,39,176,0.5)';
+    ctx.beginPath();
+    ctx.ellipse(sx, sy - height / 2, 8, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(200,100,255,0.4)';
+    ctx.beginPath();
+    ctx.ellipse(sx, sy - height / 2, 5, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
 
-// Seeded pseudo-random for consistent building look
 function seededRand(x: number, y: number, seed: number): number {
   const n = Math.sin(x * 127.1 + y * 311.7 + seed * 113.3) * 43758.5453;
   return n - Math.floor(n);
@@ -150,12 +238,10 @@ function drawWindows(ctx: CanvasRenderingContext2D, sx: number, sy: number, heig
   const ww = 3;
   const wh = 3;
 
-  // Left face windows (along the left iso wall)
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const t = (col + 0.3) / (cols + 0.2);
       const rowT = (row + 1) / (rows + 1);
-      // Interpolate along left face
       const baseX = sx - HALF_W + t * HALF_W;
       const baseY = sy + t * HALF_H;
       const wy = baseY - height * (1 - rowT * 0.8) + 2;
@@ -166,7 +252,6 @@ function drawWindows(ctx: CanvasRenderingContext2D, sx: number, sy: number, heig
     }
   }
 
-  // Right face windows (along the right iso wall)
   for (let row = 0; row < rows; row++) {
     for (let col = 0; col < cols; col++) {
       const t = (col + 0.3) / (cols + 0.2);
@@ -216,7 +301,6 @@ export function renderCharacter(
     const size = 40;
     ctx.drawImage(charImage, sx - size / 2, sy - size + 5, size, size);
   } else {
-    // Fallback circle
     ctx.beginPath();
     ctx.arc(sx, sy - 12, 8, 0, Math.PI * 2);
     ctx.fillStyle = '#e040fb';
@@ -247,13 +331,11 @@ export function renderNPCs(
     const { sx, sy } = toIso(npc.pos.x, npc.pos.y);
     const floatY = Math.sin(time * 0.003) * 3;
 
-    // NPC shadow
     ctx.beginPath();
     ctx.ellipse(sx, sy + 2, 10, 4, 0, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.fill();
 
-    // NPC icon background
     ctx.beginPath();
     ctx.arc(sx, sy - 15 + floatY, 14, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(15, 10, 20, 0.85)';
@@ -262,13 +344,11 @@ export function renderNPCs(
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // NPC emoji
     ctx.font = '16px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(npc.icon, sx, sy - 14 + floatY);
 
-    // Interaction prompt "!" floating above
     const pulseScale = 0.8 + Math.sin(time * 0.005) * 0.2;
     ctx.font = `bold ${14 * pulseScale}px Syne, sans-serif`;
     ctx.fillStyle = '#ff4081';
@@ -311,7 +391,6 @@ export function renderPathPreview(
   ctx.stroke();
   ctx.setLineDash([]);
 
-  // Target marker
   const last = path[path.length - 1];
   const { sx, sy } = toIso(last.x, last.y);
   const pulse = 0.7 + Math.sin(time * 0.005) * 0.3;
