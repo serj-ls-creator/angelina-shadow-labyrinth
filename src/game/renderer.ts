@@ -136,17 +136,48 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
   }
 }
 
-function drawWindows(ctx: CanvasRenderingContext2D, sx: number, sy: number, height: number, tile: number) {
-  const windowColor = tile === TileType.BUILDING_RED ? '#ffeb3b' : '#ffd54f';
-  const windowSize = 3;
-  
-  // Front face windows
-  for (let row = 0; row < 2; row++) {
-    for (let col = 0; col < 2; col++) {
-      const wx = sx - 6 + col * 8;
-      const wy = sy - height + 8 + row * 10;
-      ctx.fillStyle = Math.random() > 0.3 ? windowColor : 'rgba(0,0,0,0.3)';
-      ctx.fillRect(wx, wy, windowSize, windowSize + 1);
+// Seeded pseudo-random for consistent building look
+function seededRand(x: number, y: number, seed: number): number {
+  const n = Math.sin(x * 127.1 + y * 311.7 + seed * 113.3) * 43758.5453;
+  return n - Math.floor(n);
+}
+
+function drawWindows(ctx: CanvasRenderingContext2D, sx: number, sy: number, height: number, tile: number, tileX: number, tileY: number) {
+  const litColor = tile === TileType.BUILDING_RED ? '#ffeb3b' : '#ffd54f';
+  const darkColor = 'rgba(20,15,30,0.7)';
+  const rows = height > 28 ? 3 : 2;
+  const cols = 2;
+  const ww = 3;
+  const wh = 3;
+
+  // Left face windows (along the left iso wall)
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const t = (col + 0.3) / (cols + 0.2);
+      const rowT = (row + 1) / (rows + 1);
+      // Interpolate along left face
+      const baseX = sx - HALF_W + t * HALF_W;
+      const baseY = sy + t * HALF_H;
+      const wy = baseY - height * (1 - rowT * 0.8) + 2;
+      const wx = baseX;
+      const lit = seededRand(tileX, tileY, row * 10 + col) > 0.35;
+      ctx.fillStyle = lit ? litColor : darkColor;
+      ctx.fillRect(wx - ww / 2, wy, ww, wh);
+    }
+  }
+
+  // Right face windows (along the right iso wall)
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const t = (col + 0.3) / (cols + 0.2);
+      const rowT = (row + 1) / (rows + 1);
+      const baseX = sx + t * HALF_W;
+      const baseY = sy + HALF_H - t * HALF_H;
+      const wy = baseY - height * (1 - rowT * 0.8) + 2;
+      const wx = baseX;
+      const lit = seededRand(tileX + 100, tileY, row * 10 + col) > 0.35;
+      ctx.fillStyle = lit ? litColor : darkColor;
+      ctx.fillRect(wx - ww / 2, wy, ww, wh);
     }
   }
 }
