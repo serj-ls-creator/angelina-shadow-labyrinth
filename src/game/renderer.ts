@@ -36,7 +36,7 @@ export function renderMap(
       const tile = mapTiles[y]?.[x] ?? 0;
       const { sx, sy } = toIso(x, y);
       
-      renderTile(ctx, sx, sy, tile);
+      renderTile(ctx, sx, sy, tile, x, y);
     }
   }
 
