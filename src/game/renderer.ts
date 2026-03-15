@@ -45,7 +45,7 @@ export function renderMap(
 
 function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile: number, tileX: number, tileY: number) {
   const color = getTileColor(tile);
-  const height = getBuildingHeight(tile);
+  const height = getBuildingHeight(tile, tileX, tileY);
 
   // Draw flat tile (diamond)
   ctx.beginPath();
