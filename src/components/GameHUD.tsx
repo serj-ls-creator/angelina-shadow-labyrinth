@@ -1,10 +1,13 @@
+import { PlayerCombatStats } from '../game/combatSystem';
+
 interface GameHUDProps {
   gameTime: string;
   questCount: number;
   onQuestLogToggle: () => void;
+  playerStats?: PlayerCombatStats;
 }
 
-export default function GameHUD({ gameTime, questCount, onQuestLogToggle }: GameHUDProps) {
+export default function GameHUD({ gameTime, questCount, onQuestLogToggle, playerStats }: GameHUDProps) {
   return (
     <>
       {/* Top bar */}
@@ -35,6 +38,30 @@ export default function GameHUD({ gameTime, questCount, onQuestLogToggle }: Game
           </div>
         </button>
       </div>
+
+      {/* Player stats bar (dungeon only) */}
+      {playerStats && (
+        <div className="fixed top-14 left-3 z-40 glass-panel px-3 py-2 space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-muted-foreground font-mono">Ур.{playerStats.level}</span>
+            <span className="text-[10px] text-muted-foreground font-mono">
+              ❤️ {playerStats.hp}/{playerStats.maxHp}
+            </span>
+          </div>
+          <div className="w-24 bg-muted/50 rounded-full h-1.5">
+            <div
+              className="h-1.5 rounded-full transition-all duration-300"
+              style={{
+                width: `${(playerStats.hp / playerStats.maxHp) * 100}%`,
+                backgroundColor: playerStats.hp / playerStats.maxHp > 0.5 ? 'hsl(150, 60%, 40%)' : 'hsl(0, 70%, 50%)',
+              }}
+            />
+          </div>
+          <p className="text-[9px] text-muted-foreground font-mono">
+            ⚔️{playerStats.attack} 🛡️{playerStats.defense}
+          </p>
+        </div>
+      )}
 
       {/* Hint text */}
       <div className="fixed bottom-20 left-0 right-0 text-center pointer-events-none z-30">
