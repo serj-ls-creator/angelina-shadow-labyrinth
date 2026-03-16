@@ -3,24 +3,6 @@ import { TileType as T } from './types';
 export const DUNGEON_WIDTH = 120;
 export const DUNGEON_HEIGHT = 90;
 
-// Procedural dungeon generation
-function createEmptyMap(): number[][] {
-  const map: number[][] = [];
-  for (let y = 0; y < DUNGEON_HEIGHT; y++) {
-    map.push(new Array(DUNGEON_WIDTH).fill(T.DUNGEON_WALL));
-  }
-  return map;
-}
-
-interface Room {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  cx: number;
-  cy: number;
-}
-
 function seededRandom(seed: number): () => number {
   let s = seed;
   return () => {
@@ -29,172 +11,201 @@ function seededRandom(seed: number): () => number {
   };
 }
 
-function generateDungeon(): number[][] {
-  const map = createEmptyMap();
+// Maze generation using recursive backtracking on a grid
+// This guarantees all cells are connected
+function generateMaze(): number[][] {
+  const map: number[][] = [];
+  for (let y = 0; y < DUNGEON_HEIGHT; y++) {
+    map.push(new Array(DUNGEON_WIDTH).fill(T.DUNGEON_WALL));
+  }
+
   const rand = seededRandom(42069);
-  const rooms: Room[] = [];
 
-  // Generate rooms
-  const maxRooms = 45;
-  for (let i = 0; i < 300 && rooms.length < maxRooms; i++) {
-    const w = Math.floor(rand() * 10) + 5;
-    const h = Math.floor(rand() * 8) + 5;
-    const x = Math.floor(rand() * (DUNGEON_WIDTH - w - 4)) + 2;
-    const y = Math.floor(rand() * (DUNGEON_HEIGHT - h - 4)) + 2;
+  // Maze cells: odd coordinates are cells, even are walls
+  const cellW = Math.floor((DUNGEON_WIDTH - 1) / 2);
+  const cellH = Math.floor((DUNGEON_HEIGHT - 1) / 2);
+  const visited = new Uint8Array(cellW * cellH);
 
-    // Check overlap
-    let overlaps = false;
-    for (const room of rooms) {
-      if (x < room.x + room.w + 2 && x + w + 2 > room.x &&
-          y < room.y + room.h + 2 && y + h + 2 > room.y) {
-        overlaps = true;
-        break;
+  // Carve a cell
+  const carve = (cx: number, cy: number) => {
+    const mx = cx * 2 + 1;
+    const my = cy * 2 + 1;
+    map[my][mx] = T.DUNGEON_FLOOR;
+  };
+
+  // Carve passage between two adjacent cells
+  const carvePassage = (cx1: number, cy1: number, cx2: number, cy2: number) => {
+    const wx = cx1 * 2 + 1 + (cx2 - cx1);
+    const wy = cy1 * 2 + 1 + (cy2 - cy1);
+    map[wy][wx] = T.DUNGEON_FLOOR;
+  };
+
+  // Iterative backtracking to avoid stack overflow
+  const stack: [number, number][] = [];
+  const startCx = 0;
+  const startCy = 0;
+  visited[startCy * cellW + startCx] = 1;
+  carve(startCx, startCy);
+  stack.push([startCx, startCy]);
+
+  const dirs = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+
+  while (stack.length > 0) {
+    const [cx, cy] = stack[stack.length - 1];
+    // Find unvisited neighbors
+    const neighbors: [number, number][] = [];
+    for (const [dx, dy] of dirs) {
+      const nx = cx + dx;
+      const ny = cy + dy;
+      if (nx >= 0 && nx < cellW && ny >= 0 && ny < cellH && !visited[ny * cellW + nx]) {
+        neighbors.push([nx, ny]);
       }
     }
-    if (overlaps) continue;
 
-    rooms.push({ x, y, w, h, cx: Math.floor(x + w / 2), cy: Math.floor(y + h / 2) });
+    if (neighbors.length === 0) {
+      stack.pop();
+      continue;
+    }
+
+    const [nx, ny] = neighbors[Math.floor(rand() * neighbors.length)];
+    visited[ny * cellW + nx] = 1;
+    carvePassage(cx, cy, nx, ny);
+    carve(nx, ny);
+    stack.push([nx, ny]);
   }
 
-  // Carve rooms
-  for (const room of rooms) {
-    for (let ry = room.y; ry < room.y + room.h; ry++) {
-      for (let rx = room.x; rx < room.x + room.w; rx++) {
-        map[ry][rx] = T.DUNGEON_FLOOR;
-      }
-    }
-  }
-
-  // Connect rooms with corridors
-  for (let i = 1; i < rooms.length; i++) {
-    const a = rooms[i - 1];
-    const b = rooms[i];
-
-    // L-shaped corridor
-    if (rand() > 0.5) {
-      carveHCorridor(map, a.cx, b.cx, a.cy);
-      carveVCorridor(map, a.cy, b.cy, b.cx);
-    } else {
-      carveVCorridor(map, a.cy, b.cy, a.cx);
-      carveHCorridor(map, a.cx, b.cx, b.cy);
-    }
-  }
-
-  // Also connect some random rooms for loops
-  for (let i = 0; i < 8; i++) {
-    const a = rooms[Math.floor(rand() * rooms.length)];
-    const b = rooms[Math.floor(rand() * rooms.length)];
-    if (a !== b) {
-      carveHCorridor(map, a.cx, b.cx, a.cy);
-      carveVCorridor(map, a.cy, b.cy, b.cx);
-    }
-  }
-
-  // Add decorations
-  for (const room of rooms) {
-    // Lava pools in some rooms
-    if (rand() > 0.7 && room.w >= 7 && room.h >= 7) {
-      const lx = room.x + Math.floor(room.w / 2) - 1;
-      const ly = room.y + Math.floor(room.h / 2) - 1;
-      for (let dy = 0; dy < 3; dy++) {
-        for (let dx = 0; dx < 3; dx++) {
-          if (rand() > 0.3) map[ly + dy][lx + dx] = T.LAVA;
-        }
-      }
-    }
-
-    // Crystals along walls
-    if (rand() > 0.5) {
-      const spots = [
-        { x: room.x, y: room.y + Math.floor(room.h / 2) },
-        { x: room.x + room.w - 1, y: room.y + Math.floor(room.h / 2) },
-        { x: room.x + Math.floor(room.w / 2), y: room.y },
-        { x: room.x + Math.floor(room.w / 2), y: room.y + room.h - 1 },
-      ];
-      for (const spot of spots) {
-        if (rand() > 0.6 && map[spot.y][spot.x] === T.DUNGEON_FLOOR) {
-          map[spot.y][spot.x] = T.CRYSTAL;
-        }
-      }
-    }
-
-    // Moss patches
-    for (let ry = room.y; ry < room.y + room.h; ry++) {
-      for (let rx = room.x; rx < room.x + room.w; rx++) {
-        if (map[ry][rx] === T.DUNGEON_FLOOR && rand() > 0.92) {
-          map[ry][rx] = T.DUNGEON_MOSS;
-        }
-        if (map[ry][rx] === T.DUNGEON_FLOOR && rand() > 0.97) {
-          map[ry][rx] = T.DUNGEON_BONES;
-        }
-      }
-    }
-
-    // Doors at corridor entries
-    for (let ry = room.y; ry < room.y + room.h; ry++) {
-      for (const rx of [room.x - 1, room.x + room.w]) {
-        if (rx >= 0 && rx < DUNGEON_WIDTH && map[ry]?.[rx] === T.DUNGEON_FLOOR) {
-          // Check if it's a narrow passage (wall above and below)
-          const above = map[ry - 1]?.[rx === room.x - 1 ? room.x : room.x + room.w - 1];
-          const below = map[ry + 1]?.[rx === room.x - 1 ? room.x : room.x + room.w - 1];
-          if (above === T.DUNGEON_WALL && below === T.DUNGEON_WALL && rand() > 0.6) {
-            map[ry][rx === room.x - 1 ? room.x : room.x + room.w - 1] = T.DUNGEON_DOOR;
+  // Widen some corridors for variety (make some 2-wide)
+  for (let y = 1; y < DUNGEON_HEIGHT - 1; y++) {
+    for (let x = 1; x < DUNGEON_WIDTH - 1; x++) {
+      if (map[y][x] === T.DUNGEON_FLOOR && rand() > 0.7) {
+        // Try to widen in a random direction
+        const d = dirs[Math.floor(rand() * 4)];
+        const nx = x + d[0];
+        const ny = y + d[1];
+        if (ny > 0 && ny < DUNGEON_HEIGHT - 1 && nx > 0 && nx < DUNGEON_WIDTH - 1) {
+          if (map[ny][nx] === T.DUNGEON_WALL) {
+            // Only widen if it won't create huge open areas
+            let floorCount = 0;
+            for (const [ddx, ddy] of dirs) {
+              if (map[ny + ddy]?.[nx + ddx] === T.DUNGEON_FLOOR) floorCount++;
+            }
+            if (floorCount <= 2) {
+              map[ny][nx] = T.DUNGEON_FLOOR;
+            }
           }
         }
       }
     }
   }
 
-  // Place portal back to city in the first room
-  const firstRoom = rooms[0];
-  map[firstRoom.cy][firstRoom.cx] = T.PORTAL;
+  // Create some open rooms at intersections
+  const rooms: { x: number; y: number; w: number; h: number }[] = [];
+  for (let i = 0; i < 15; i++) {
+    const w = Math.floor(rand() * 5) + 4;
+    const h = Math.floor(rand() * 5) + 4;
+    const rx = Math.floor(rand() * (DUNGEON_WIDTH - w - 4)) + 2;
+    const ry = Math.floor(rand() * (DUNGEON_HEIGHT - h - 4)) + 2;
+
+    let overlaps = false;
+    for (const r of rooms) {
+      if (rx < r.x + r.w + 2 && rx + w + 2 > r.x && ry < r.y + r.h + 2 && ry + h + 2 > r.y) {
+        overlaps = true;
+        break;
+      }
+    }
+    if (overlaps) continue;
+
+    rooms.push({ x: rx, y: ry, w, h });
+    for (let dy = 0; dy < h; dy++) {
+      for (let dx = 0; dx < w; dx++) {
+        map[ry + dy][rx + dx] = T.DUNGEON_FLOOR;
+      }
+    }
+  }
+
+  // Add decorations
+  for (let y = 1; y < DUNGEON_HEIGHT - 1; y++) {
+    for (let x = 1; x < DUNGEON_WIDTH - 1; x++) {
+      if (map[y][x] !== T.DUNGEON_FLOOR) continue;
+      const r = rand();
+
+      // Dungeon buildings (only in rooms, check if surrounded by floor)
+      let floorNeighbors = 0;
+      for (const [dx, dy] of dirs) {
+        if (map[y + dy]?.[x + dx] === T.DUNGEON_FLOOR) floorNeighbors++;
+      }
+
+      if (floorNeighbors >= 3 && r > 0.96) {
+        const buildingRoll = rand();
+        if (buildingRoll < 0.33) {
+          map[y][x] = T.DUNGEON_BUILDING_PURPLE;
+        } else if (buildingRoll < 0.66) {
+          map[y][x] = T.DUNGEON_BUILDING_BROWN;
+        } else {
+          map[y][x] = T.DUNGEON_BUILDING_ORANGE;
+        }
+        continue;
+      }
+
+      if (r > 0.97) map[y][x] = T.DUNGEON_MOSS;
+      else if (r > 0.96) map[y][x] = T.DUNGEON_BONES;
+      else if (r > 0.955) map[y][x] = T.CRYSTAL;
+    }
+  }
+
+  // Lava pools in some rooms
+  for (const room of rooms) {
+    if (rand() > 0.5 && room.w >= 5 && room.h >= 5) {
+      const lx = room.x + Math.floor(room.w / 2) - 1;
+      const ly = room.y + Math.floor(room.h / 2) - 1;
+      for (let dy = 0; dy < 2; dy++) {
+        for (let dx = 0; dx < 2; dx++) {
+          if (rand() > 0.3) map[ly + dy][lx + dx] = T.LAVA;
+        }
+      }
+    }
+  }
+
+  // Portal in top-left area (first cell)
+  map[1][1] = T.PORTAL;
+
+  // Ensure exit area is reachable at bottom-right
+  const ex = DUNGEON_WIDTH - 2;
+  const ey = DUNGEON_HEIGHT - 2;
+  // The maze guarantees connectivity, so just mark it
+  if (map[ey][ex] === T.DUNGEON_WALL) {
+    // Find nearest floor tile
+    for (let r = 1; r < 5; r++) {
+      let found = false;
+      for (let dy = -r; dy <= r && !found; dy++) {
+        for (let dx = -r; dx <= r && !found; dx++) {
+          const ty = ey + dy;
+          const tx = ex + dx;
+          if (ty > 0 && ty < DUNGEON_HEIGHT && tx > 0 && tx < DUNGEON_WIDTH && map[ty][tx] === T.DUNGEON_FLOOR) {
+            found = true;
+          }
+        }
+      }
+      if (found) break;
+    }
+  }
 
   return map;
 }
 
-function carveHCorridor(map: number[][], x1: number, x2: number, y: number) {
-  const minX = Math.min(x1, x2);
-  const maxX = Math.max(x1, x2);
-  for (let x = minX; x <= maxX; x++) {
-    if (y >= 0 && y < DUNGEON_HEIGHT && x >= 0 && x < DUNGEON_WIDTH) {
-      if (map[y][x] === T.DUNGEON_WALL) map[y][x] = T.DUNGEON_FLOOR;
-      // Widen corridors slightly
-      if (y + 1 < DUNGEON_HEIGHT && map[y + 1][x] === T.DUNGEON_WALL) {
-        map[y + 1][x] = T.DUNGEON_FLOOR;
-      }
-    }
-  }
-}
+export const dungeonTiles = generateMaze();
 
-function carveVCorridor(map: number[][], y1: number, y2: number, x: number) {
-  const minY = Math.min(y1, y2);
-  const maxY = Math.max(y1, y2);
-  for (let y = minY; y <= maxY; y++) {
-    if (y >= 0 && y < DUNGEON_HEIGHT && x >= 0 && x < DUNGEON_WIDTH) {
-      if (map[y][x] === T.DUNGEON_WALL) map[y][x] = T.DUNGEON_FLOOR;
-      if (x + 1 < DUNGEON_WIDTH && map[y][x + 1] === T.DUNGEON_WALL) {
-        map[y][x + 1] = T.DUNGEON_FLOOR;
-      }
-    }
-  }
-}
-
-export const dungeonTiles = generateDungeon();
-
-// Find portal position in dungeon (first room center)
 export function getDungeonPortalPos(): { x: number; y: number } {
   for (let y = 0; y < DUNGEON_HEIGHT; y++) {
     for (let x = 0; x < DUNGEON_WIDTH; x++) {
       if (dungeonTiles[y][x] === T.PORTAL) return { x, y };
     }
   }
-  return { x: 5, y: 5 };
+  return { x: 1, y: 1 };
 }
 
-// Find a good spawn point near portal
 export function getDungeonSpawnPos(): { x: number; y: number } {
   const portal = getDungeonPortalPos();
-  // Find adjacent walkable tile
   const dirs = [{ x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 }];
   for (const d of dirs) {
     const nx = portal.x + d.x;
@@ -219,6 +230,9 @@ export function getDungeonTileColor(tile: number): string {
     case T.CRYSTAL: return '#00bcd4';
     case T.DUNGEON_MOSS: return '#2d4a2d';
     case T.DUNGEON_BONES: return '#8a8a7a';
+    case T.DUNGEON_BUILDING_PURPLE: return '#6a1b9a';
+    case T.DUNGEON_BUILDING_BROWN: return '#4e342e';
+    case T.DUNGEON_BUILDING_ORANGE: return '#bf360c';
     default: return '#1a1a2e';
   }
 }
@@ -227,6 +241,9 @@ export function getDungeonBuildingHeight(tile: number): number {
   switch (tile) {
     case T.DUNGEON_WALL: return 20;
     case T.CRYSTAL: return 15;
+    case T.DUNGEON_BUILDING_PURPLE: return 30;
+    case T.DUNGEON_BUILDING_BROWN: return 25;
+    case T.DUNGEON_BUILDING_ORANGE: return 22;
     default: return 0;
   }
 }

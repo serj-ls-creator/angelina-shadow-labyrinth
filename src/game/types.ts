@@ -29,6 +29,9 @@ export enum TileType {
   CRYSTAL = 16,
   DUNGEON_MOSS = 17,
   DUNGEON_BONES = 18,
+  DUNGEON_BUILDING_PURPLE = 19,
+  DUNGEON_BUILDING_BROWN = 20,
+  DUNGEON_BUILDING_ORANGE = 21,
 }
 
 export type MapId = 'city' | 'dungeon';

@@ -41,28 +41,34 @@ export function renderMap(
   ctx.scale(zoom, zoom);
   ctx.translate(-camera.x, -camera.y);
 
-  // Calculate visible tile range for performance
-  const invZoom = 1 / zoom;
-  const viewW = canvasW * invZoom;
-  const viewH = canvasH * invZoom;
-  
-  // Rough bounds in iso space
-  const cx = camera.x;
-  const cy = camera.y;
-  const margin = 5;
-  
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
+  // Convert screen edges to world iso coords for tight culling
+  const halfW = (canvasW / 2) / zoom;
+  const halfH = (canvasH / 3) / zoom;
+  const viewLeft = camera.x - halfW - TILE_SIZE;
+  const viewRight = camera.x + halfW + TILE_SIZE;
+  const viewTop = camera.y - halfH - 60; // extra for tall buildings
+  const viewBottom = camera.y + halfH + TILE_SIZE;
+
+  // Convert iso view bounds to approximate tile range
+  const topLeft = fromIso(viewLeft, viewTop);
+  const topRight = fromIso(viewRight, viewTop);
+  const botLeft = fromIso(viewLeft, viewBottom);
+  const botRight = fromIso(viewRight, viewBottom);
+
+  const minTileX = Math.max(0, Math.floor(Math.min(topLeft.x, botLeft.x)) - 2);
+  const maxTileX = Math.min(width - 1, Math.ceil(Math.max(topRight.x, botRight.x)) + 2);
+  const minTileY = Math.max(0, Math.floor(Math.min(topLeft.y, topRight.y)) - 2);
+  const maxTileY = Math.min(height - 1, Math.ceil(Math.max(botLeft.y, botRight.y)) + 2);
+
+  for (let y = minTileY; y <= maxTileY; y++) {
+    for (let x = minTileX; x <= maxTileX; x++) {
       const tile = tiles[y]?.[x] ?? 0;
       if (tile === 0) continue;
       
       const { sx, sy } = toIso(x, y);
-      
-      // Frustum culling
-      const screenX = (sx - cx) * zoom;
-      const screenY = (sy - cy) * zoom;
-      if (screenX < -canvasW && screenY < -canvasH) continue;
-      if (screenX > canvasW && screenY > canvasH) continue;
+
+      // Final screen-space check
+      if (sx < viewLeft || sx > viewRight || sy < viewTop || sy > viewBottom) continue;
       
       renderTile(ctx, sx, sy, tile, x, y, mapId);
     }
