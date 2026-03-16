@@ -456,3 +456,63 @@ export function renderPathPreview(
 
   ctx.restore();
 }
+
+export function renderMonsters(
+  ctx: CanvasRenderingContext2D,
+  monsters: { pos: Position; icon: string; name: string; hp: number; maxHp: number }[],
+  camera: Position,
+  canvasW: number,
+  canvasH: number,
+  zoom: number,
+  time: number
+) {
+  ctx.save();
+  ctx.translate(canvasW / 2, canvasH / 3);
+  ctx.scale(zoom, zoom);
+  ctx.translate(-camera.x, -camera.y);
+
+  for (const m of monsters) {
+    const { sx, sy } = toIso(m.pos.x, m.pos.y);
+    const floatY = Math.sin(time * 0.004 + m.pos.x * 3) * 2;
+
+    // Shadow
+    ctx.beginPath();
+    ctx.ellipse(sx, sy + 2, 8, 3, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fill();
+
+    // Body circle
+    ctx.beginPath();
+    ctx.arc(sx, sy - 12 + floatY, 12, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(40, 10, 10, 0.9)';
+    ctx.fill();
+    ctx.strokeStyle = 'hsla(0, 80%, 50%, 0.6)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Icon
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(m.icon, sx, sy - 11 + floatY);
+
+    // HP bar
+    const hpPct = m.hp / m.maxHp;
+    const barW = 18;
+    const barH = 3;
+    const barX = sx - barW / 2;
+    const barY = sy - 26 + floatY;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(barX, barY, barW, barH);
+    ctx.fillStyle = hpPct > 0.5 ? '#4caf50' : hpPct > 0.25 ? '#ff9800' : '#f44336';
+    ctx.fillRect(barX, barY, barW * hpPct, barH);
+
+    // Aggro indicator
+    const pulse = 0.5 + Math.sin(time * 0.006 + m.pos.y) * 0.5;
+    ctx.fillStyle = `rgba(255, 50, 50, ${pulse * 0.6})`;
+    ctx.font = `bold 10px sans-serif`;
+    ctx.fillText('⚔', sx, sy - 30 + floatY);
+  }
+
+  ctx.restore();
+}
