@@ -278,6 +278,43 @@ function drawWindows(ctx: CanvasRenderingContext2D, sx: number, sy: number, heig
   }
 }
 
+function drawDungeonWindows(ctx: CanvasRenderingContext2D, sx: number, sy: number, height: number, tile: number, tileX: number, tileY: number) {
+  const glowColors: Record<number, string> = {
+    [TileType.DUNGEON_BUILDING_PURPLE]: '#ce93d8',
+    [TileType.DUNGEON_BUILDING_BROWN]: '#ffab91',
+    [TileType.DUNGEON_BUILDING_ORANGE]: '#ffcc80',
+  };
+  const litColor = glowColors[tile] || '#ffd54f';
+  const darkColor = 'rgba(10,5,15,0.8)';
+  const rows = height > 25 ? 3 : 2;
+  const ww = 2.5;
+  const wh = 3;
+
+  // Left wall
+  for (let row = 0; row < rows; row++) {
+    const t = 0.5;
+    const rowT = (row + 1) / (rows + 1);
+    const baseX = sx - HALF_W + t * HALF_W;
+    const baseY = sy + t * HALF_H;
+    const wy = baseY - height * (1 - rowT * 0.8) + 2;
+    const lit = seededRand(tileX, tileY, row * 7 + 3) > 0.4;
+    ctx.fillStyle = lit ? litColor : darkColor;
+    ctx.fillRect(baseX - ww / 2, wy, ww, wh);
+  }
+
+  // Right wall
+  for (let row = 0; row < rows; row++) {
+    const t = 0.5;
+    const rowT = (row + 1) / (rows + 1);
+    const baseX = sx + t * HALF_W;
+    const baseY = sy + HALF_H - t * HALF_H;
+    const wy = baseY - height * (1 - rowT * 0.8) + 2;
+    const lit = seededRand(tileX + 50, tileY, row * 7 + 3) > 0.4;
+    ctx.fillStyle = lit ? litColor : darkColor;
+    ctx.fillRect(baseX - ww / 2, wy, ww, wh);
+  }
+}
+
 function darken(hex: string, amount: number): string {
   const r = parseInt(hex.slice(1, 3), 16);
   const g = parseInt(hex.slice(3, 5), 16);
