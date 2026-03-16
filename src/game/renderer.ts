@@ -195,6 +195,11 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
       drawWindows(ctx, sx, sy, height, tile, tileX, tileY);
     }
 
+    // Dungeon building windows
+    if (isDungeon && (tile === TileType.DUNGEON_BUILDING_PURPLE || tile === TileType.DUNGEON_BUILDING_BROWN || tile === TileType.DUNGEON_BUILDING_ORANGE)) {
+      drawDungeonWindows(ctx, sx, sy, height, tile, tileX, tileY);
+    }
+
     // Crystal glow
     if (tile === TileType.CRYSTAL) {
       ctx.fillStyle = 'rgba(0,188,212,0.3)';
