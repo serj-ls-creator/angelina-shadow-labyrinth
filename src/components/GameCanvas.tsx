@@ -1,13 +1,15 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { Position, MapId } from '../game/types';
 import { findPath } from '../game/pathfinding';
-import { renderMap, renderCharacter, renderNPCs, renderPathPreview, toIso, fromIso } from '../game/renderer';
+import { renderMap, renderCharacter, renderNPCs, renderPathPreview, renderMonsters, toIso, fromIso } from '../game/renderer';
 import { npcs as npcData } from '../game/dialogueData';
 import { NPC, DialogueNode, QuestEntry } from '../game/types';
 import { dialogues } from '../game/dialogueData';
 import { getCurrentMapData, findPortalNearby } from '../game/mapSystem';
+import { Monster, CombatState, PlayerCombatStats, generateDungeonMonsters, createInitialPlayerStats, performAttack, getXpForLevel } from '../game/combatSystem';
 import characterSrc from '@/assets/character-kuromi-girl.png';
 import DialogueBox from './DialogueBox';
+import CombatUI from './CombatUI';
 import GameHUD from './GameHUD';
 import QuestLog from './QuestLog';
 import MiniMap from './MiniMap';
@@ -15,6 +17,7 @@ import MiniMap from './MiniMap';
 const PLAYER_SPEED = 0.06;
 const NPC_INTERACT_DIST = 2.5;
 const CAMERA_LERP = 0.08;
+const MONSTER_INTERACT_DIST = 2;
 
 export default function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -41,6 +44,20 @@ export default function GameCanvas() {
   const [gameTime, setGameTime] = useState('21:47');
   const [transitioning, setTransitioning] = useState(false);
 
+  // Combat state
+  const [monsters, setMonsters] = useState<Monster[]>(() => generateDungeonMonsters());
+  const monstersRef = useRef<Monster[]>([]);
+  const [playerStats, setPlayerStats] = useState<PlayerCombatStats>(createInitialPlayerStats);
+  const playerStatsRef = useRef<PlayerCombatStats>(createInitialPlayerStats());
+  const [combat, setCombat] = useState<CombatState>({
+    active: false, monster: null, playerTurn: true, log: [], result: 'none',
+  });
+  const defendingRef = useRef(false);
+
+  // Keep refs in sync
+  useEffect(() => { monstersRef.current = monsters; }, [monsters]);
+  useEffect(() => { playerStatsRef.current = playerStats; }, [playerStats]);
+
   useEffect(() => {
     const img = new Image();
     img.src = characterSrc;
@@ -54,7 +71,6 @@ export default function GameCanvas() {
 
   const switchMap = useCallback((toMap: MapId, spawnPos: Position) => {
     setTransitioning(true);
-    // Clear path
     pathRef.current = [];
     pathIndexRef.current = 0;
     targetRef.current = null;
@@ -63,13 +79,162 @@ export default function GameCanvas() {
       playerRef.current = { ...spawnPos };
       currentMapRef.current = toMap;
       setCurrentMap(toMap);
-      // Snap camera
       const { sx, sy } = toIso(spawnPos.x, spawnPos.y);
       cameraRef.current = { x: sx, y: sy };
-      
       setTimeout(() => setTransitioning(false), 300);
     }, 500);
   }, []);
+
+  // Combat actions
+  const combatRand = useCallback(() => Math.random(), []);
+
+  const startCombat = useCallback((monster: Monster) => {
+    pathRef.current = [];
+    pathIndexRef.current = 0;
+    targetRef.current = null;
+    defendingRef.current = false;
+    setCombat({
+      active: true,
+      monster: { ...monster },
+      playerTurn: true,
+      log: [`⚔️ ${monster.name} преграждает путь!`],
+      result: 'none',
+    });
+  }, []);
+
+  const handleCombatAttack = useCallback(() => {
+    setCombat(prev => {
+      if (!prev.monster || prev.result !== 'none' || !prev.playerTurn) return prev;
+      const stats = playerStatsRef.current;
+      const { damage, critical } = performAttack(stats, prev.monster, combatRand);
+      const newMonsterHp = prev.monster.hp - damage;
+      const log = [...prev.log, `⚔️ Ты ${critical ? 'КРИТ! ' : ''}наносишь ${damage} урона!`];
+
+      if (newMonsterHp <= 0) {
+        // Monster defeated
+        setMonsters(ms => ms.map(m => m.id === prev.monster!.id ? { ...m, isAlive: false } : m));
+        const xpGain = prev.monster.xpReward;
+        setPlayerStats(ps => {
+          const newXp = ps.xp + xpGain;
+          const needed = getXpForLevel(ps.level);
+          if (newXp >= needed) {
+            return {
+              ...ps, xp: newXp - needed, level: ps.level + 1,
+              maxHp: ps.maxHp + 10, hp: Math.min(ps.hp + 15, ps.maxHp + 10),
+              attack: ps.attack + 2, defense: ps.defense + 1,
+            };
+          }
+          return { ...ps, xp: newXp };
+        });
+        return { ...prev, monster: { ...prev.monster, hp: 0 }, log: [...log, `🎉 ${prev.monster.name} повержен!`], result: 'win' };
+      }
+
+      // Monster's turn after short delay
+      setTimeout(() => {
+        setCombat(c => {
+          if (!c.monster || c.result !== 'none') return c;
+          const def = defendingRef.current ? { defense: playerStatsRef.current.defense * 2 } : playerStatsRef.current;
+          const { damage: mDmg, critical: mCrit } = performAttack(c.monster, def, combatRand);
+          const actualDmg = defendingRef.current ? Math.max(1, Math.floor(mDmg / 2)) : mDmg;
+          defendingRef.current = false;
+
+          setPlayerStats(ps => {
+            const newHp = ps.hp - actualDmg;
+            if (newHp <= 0) {
+              setCombat(cc => ({
+                ...cc,
+                log: [...cc.log, `💀 ${c.monster!.name} наносит ${actualDmg} урона! Ты побеждён...`],
+                result: 'lose',
+                playerTurn: false,
+              }));
+              return { ...ps, hp: 0 };
+            }
+            return { ...ps, hp: newHp };
+          });
+
+          return {
+            ...c,
+            monster: { ...c.monster, hp: newMonsterHp },
+            log: [...c.log, `${mCrit ? '💥 КРИТ! ' : ''}${c.monster.name} наносит ${actualDmg} урона!${defendingRef.current ? ' (блок)' : ''}`],
+            playerTurn: true,
+          };
+        });
+      }, 600);
+
+      return { ...prev, monster: { ...prev.monster, hp: newMonsterHp }, log, playerTurn: false };
+    });
+  }, [combatRand]);
+
+  const handleCombatDefend = useCallback(() => {
+    setCombat(prev => {
+      if (!prev.monster || prev.result !== 'none' || !prev.playerTurn) return prev;
+      defendingRef.current = true;
+      const log = [...prev.log, '🛡️ Ты принимаешь защитную стойку!'];
+
+      // Monster attacks
+      setTimeout(() => {
+        setCombat(c => {
+          if (!c.monster || c.result !== 'none') return c;
+          const def = { defense: playerStatsRef.current.defense * 2 };
+          const { damage: mDmg } = performAttack(c.monster, def, combatRand);
+          const actualDmg = Math.max(1, Math.floor(mDmg / 2));
+          defendingRef.current = false;
+
+          setPlayerStats(ps => {
+            const newHp = ps.hp - actualDmg;
+            if (newHp <= 0) {
+              setCombat(cc => ({ ...cc, log: [...cc.log, `💀 Даже блок не помог...`], result: 'lose', playerTurn: false }));
+              return { ...ps, hp: 0 };
+            }
+            return { ...ps, hp: newHp };
+          });
+
+          return {
+            ...c,
+            log: [...c.log, `🛡️ Блок! ${c.monster.name} наносит всего ${actualDmg} урона!`],
+            playerTurn: true,
+          };
+        });
+      }, 600);
+
+      return { ...prev, log, playerTurn: false };
+    });
+  }, [combatRand]);
+
+  const handleCombatFlee = useCallback(() => {
+    setCombat(prev => {
+      if (prev.result !== 'none') return prev;
+      if (Math.random() > 0.4) {
+        return { ...prev, log: [...prev.log, '🏃 Удалось сбежать!'], result: 'fled' };
+      }
+      // Failed to flee, monster attacks
+      setTimeout(() => {
+        setCombat(c => {
+          if (!c.monster || c.result !== 'none') return c;
+          const { damage: mDmg } = performAttack(c.monster, playerStatsRef.current, combatRand);
+          setPlayerStats(ps => {
+            const newHp = ps.hp - mDmg;
+            if (newHp <= 0) {
+              setCombat(cc => ({ ...cc, log: [...cc.log, `💀 Не удалось убежать...`], result: 'lose' }));
+              return { ...ps, hp: 0 };
+            }
+            return { ...ps, hp: newHp };
+          });
+          return { ...c, log: [...c.log, `❌ Не удалось сбежать! ${c.monster.name} наносит ${mDmg} урона!`], playerTurn: true };
+        });
+      }, 600);
+      return { ...prev, log: [...prev.log, '❌ Побег не удался!'], playerTurn: false };
+    });
+  }, [combatRand]);
+
+  const handleCombatEnd = useCallback(() => {
+    if (combat.result === 'lose') {
+      // Respawn at portal with half HP
+      setPlayerStats(ps => ({ ...ps, hp: Math.max(10, Math.floor(ps.maxHp / 2)) }));
+      switchMap('city', { x: 15, y: 15 });
+    }
+    setCombat({ active: false, monster: null, playerTurn: true, log: [], result: 'none' });
+  }, [combat.result, switchMap]);
 
   const lastClickRef = useRef(0);
   const lastTouchRef = useRef(0);
@@ -87,7 +252,7 @@ export default function GameCanvas() {
     if (now - lastClickRef.current < 120) return;
     lastClickRef.current = now;
 
-    if (currentDialogue || transitioning) return;
+    if (currentDialogue || transitioning || combat.active) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -126,7 +291,6 @@ export default function GameCanvas() {
     // Check portal interaction
     const portal = findPortalNearby(currentMapRef.current, { x: tileX, y: tileY }, 2);
     if (portal) {
-      // Walk to portal then transition
       const path = findPath(
         { x: Math.round(playerRef.current.x), y: Math.round(playerRef.current.y) },
         { x: Math.round(portal.tilePos.x), y: Math.round(portal.tilePos.y) },
@@ -144,6 +308,33 @@ export default function GameCanvas() {
         switchMap(portal.toMap, portal.toPos);
       }
       return;
+    }
+
+    // Check monster interaction (dungeon only)
+    if (currentMapRef.current === 'dungeon') {
+      for (const monster of monstersRef.current) {
+        if (!monster.isAlive) continue;
+        const dx = monster.pos.x - tileX;
+        const dy = monster.pos.y - tileY;
+        if (Math.sqrt(dx * dx + dy * dy) < MONSTER_INTERACT_DIST) {
+          const path = findPath(
+            { x: Math.round(playerRef.current.x), y: Math.round(playerRef.current.y) },
+            { x: Math.round(monster.pos.x), y: Math.round(monster.pos.y) },
+            mapData.tiles, mapData.width, mapData.height, mapData.isWalkable
+          );
+          if (path.length > 1) {
+            const walkPath = path.slice(1);
+            if (walkPath.length > 1) walkPath.pop();
+            pathRef.current = walkPath;
+            pathIndexRef.current = 0;
+            targetRef.current = walkPath[walkPath.length - 1];
+            setTimeout(() => startCombat(monster), walkPath.length * 120);
+          } else {
+            startCombat(monster);
+          }
+          return;
+        }
+      }
     }
 
     // Check NPC interaction (only in city)
@@ -191,7 +382,7 @@ export default function GameCanvas() {
         targetRef.current = walkPath[walkPath.length - 1];
       }
     }
-  }, [currentDialogue, npcs, transitioning, switchMap]);
+  }, [currentDialogue, npcs, transitioning, switchMap, startCombat, combat.active]);
 
   const startDialogue = useCallback((npc: NPC) => {
     setActiveNpc(npc);
@@ -297,9 +488,14 @@ export default function GameCanvas() {
       renderMap(ctx, cameraRef.current, canvas.width, canvas.height, zoom, mapId);
       renderPathPreview(ctx, pathRef.current.slice(pathIndexRef.current), cameraRef.current, canvas.width, canvas.height, zoom, time);
       
-      // Only render city NPCs in city
       if (mapId === 'city') {
         renderNPCs(ctx, npcs, cameraRef.current, canvas.width, canvas.height, zoom, time);
+      }
+      
+      // Render dungeon monsters
+      if (mapId === 'dungeon') {
+        const aliveMonsters = monstersRef.current.filter(m => m.isAlive);
+        renderMonsters(ctx, aliveMonsters, cameraRef.current, canvas.width, canvas.height, zoom, time);
       }
       
       renderCharacter(ctx, playerRef.current, cameraRef.current, canvas.width, canvas.height, zoom, charImgRef.current);
@@ -313,7 +509,7 @@ export default function GameCanvas() {
       cancelAnimationFrame(animRef.current);
       window.removeEventListener('resize', resize);
     };
-  }, [npcs, currentMap]);
+  }, [npcs, currentMap, monsters]);
 
   // Pinch zoom
   useEffect(() => {
@@ -372,6 +568,7 @@ export default function GameCanvas() {
         gameTime={gameTime}
         questCount={questLog.length}
         onQuestLogToggle={() => setShowQuestLog(prev => !prev)}
+        playerStats={currentMap === 'dungeon' ? playerStats : undefined}
       />
 
       {/* Map indicator */}
@@ -406,6 +603,15 @@ export default function GameCanvas() {
           onEnd={handleDialogueEnd}
         />
       )}
+
+      <CombatUI
+        combat={combat}
+        playerStats={playerStats}
+        onAttack={handleCombatAttack}
+        onDefend={handleCombatDefend}
+        onFlee={handleCombatFlee}
+        onEnd={handleCombatEnd}
+      />
     </div>
   );
 }
