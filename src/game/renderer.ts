@@ -41,28 +41,34 @@ export function renderMap(
   ctx.scale(zoom, zoom);
   ctx.translate(-camera.x, -camera.y);
 
-  // Calculate visible tile range for performance
-  const invZoom = 1 / zoom;
-  const viewW = canvasW * invZoom;
-  const viewH = canvasH * invZoom;
-  
-  // Rough bounds in iso space
-  const cx = camera.x;
-  const cy = camera.y;
-  const margin = 5;
-  
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
+  // Convert screen edges to world iso coords for tight culling
+  const halfW = (canvasW / 2) / zoom;
+  const halfH = (canvasH / 3) / zoom;
+  const viewLeft = camera.x - halfW - TILE_SIZE;
+  const viewRight = camera.x + halfW + TILE_SIZE;
+  const viewTop = camera.y - halfH - 60; // extra for tall buildings
+  const viewBottom = camera.y + halfH + TILE_SIZE;
+
+  // Convert iso view bounds to approximate tile range
+  const topLeft = fromIso(viewLeft, viewTop);
+  const topRight = fromIso(viewRight, viewTop);
+  const botLeft = fromIso(viewLeft, viewBottom);
+  const botRight = fromIso(viewRight, viewBottom);
+
+  const minTileX = Math.max(0, Math.floor(Math.min(topLeft.x, botLeft.x)) - 2);
+  const maxTileX = Math.min(width - 1, Math.ceil(Math.max(topRight.x, botRight.x)) + 2);
+  const minTileY = Math.max(0, Math.floor(Math.min(topLeft.y, topRight.y)) - 2);
+  const maxTileY = Math.min(height - 1, Math.ceil(Math.max(botLeft.y, botRight.y)) + 2);
+
+  for (let y = minTileY; y <= maxTileY; y++) {
+    for (let x = minTileX; x <= maxTileX; x++) {
       const tile = tiles[y]?.[x] ?? 0;
       if (tile === 0) continue;
       
       const { sx, sy } = toIso(x, y);
-      
-      // Frustum culling
-      const screenX = (sx - cx) * zoom;
-      const screenY = (sy - cy) * zoom;
-      if (screenX < -canvasW && screenY < -canvasH) continue;
-      if (screenX > canvasW && screenY > canvasH) continue;
+
+      // Final screen-space check
+      if (sx < viewLeft || sx > viewRight || sy < viewTop || sy > viewBottom) continue;
       
       renderTile(ctx, sx, sy, tile, x, y, mapId);
     }
@@ -189,6 +195,11 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
       drawWindows(ctx, sx, sy, height, tile, tileX, tileY);
     }
 
+    // Dungeon building windows
+    if (isDungeon && (tile === TileType.DUNGEON_BUILDING_PURPLE || tile === TileType.DUNGEON_BUILDING_BROWN || tile === TileType.DUNGEON_BUILDING_ORANGE)) {
+      drawDungeonWindows(ctx, sx, sy, height, tile, tileX, tileY);
+    }
+
     // Crystal glow
     if (tile === TileType.CRYSTAL) {
       ctx.fillStyle = 'rgba(0,188,212,0.3)';
@@ -264,6 +275,43 @@ function drawWindows(ctx: CanvasRenderingContext2D, sx: number, sy: number, heig
       ctx.fillStyle = lit ? litColor : darkColor;
       ctx.fillRect(wx - ww / 2, wy, ww, wh);
     }
+  }
+}
+
+function drawDungeonWindows(ctx: CanvasRenderingContext2D, sx: number, sy: number, height: number, tile: number, tileX: number, tileY: number) {
+  const glowColors: Record<number, string> = {
+    [TileType.DUNGEON_BUILDING_PURPLE]: '#ce93d8',
+    [TileType.DUNGEON_BUILDING_BROWN]: '#ffab91',
+    [TileType.DUNGEON_BUILDING_ORANGE]: '#ffcc80',
+  };
+  const litColor = glowColors[tile] || '#ffd54f';
+  const darkColor = 'rgba(10,5,15,0.8)';
+  const rows = height > 25 ? 3 : 2;
+  const ww = 2.5;
+  const wh = 3;
+
+  // Left wall
+  for (let row = 0; row < rows; row++) {
+    const t = 0.5;
+    const rowT = (row + 1) / (rows + 1);
+    const baseX = sx - HALF_W + t * HALF_W;
+    const baseY = sy + t * HALF_H;
+    const wy = baseY - height * (1 - rowT * 0.8) + 2;
+    const lit = seededRand(tileX, tileY, row * 7 + 3) > 0.4;
+    ctx.fillStyle = lit ? litColor : darkColor;
+    ctx.fillRect(baseX - ww / 2, wy, ww, wh);
+  }
+
+  // Right wall
+  for (let row = 0; row < rows; row++) {
+    const t = 0.5;
+    const rowT = (row + 1) / (rows + 1);
+    const baseX = sx + t * HALF_W;
+    const baseY = sy + HALF_H - t * HALF_H;
+    const wy = baseY - height * (1 - rowT * 0.8) + 2;
+    const lit = seededRand(tileX + 50, tileY, row * 7 + 3) > 0.4;
+    ctx.fillStyle = lit ? litColor : darkColor;
+    ctx.fillRect(baseX - ww / 2, wy, ww, wh);
   }
 }
 
