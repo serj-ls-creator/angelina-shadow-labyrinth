@@ -105,11 +105,18 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
       ctx.lineWidth = 1;
       ctx.stroke();
     }
+  }
 
-    if (tile === TileType.WATER) {
-      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+  // Water effect (both maps)
+  if (tile === TileType.WATER) {
+    ctx.fillStyle = isDungeon ? 'rgba(100,180,255,0.2)' : 'rgba(255,255,255,0.15)';
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, 8, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (isDungeon) {
+      ctx.fillStyle = 'rgba(50,120,200,0.15)';
       ctx.beginPath();
-      ctx.ellipse(sx, sy, 8, 3, 0, 0, Math.PI * 2);
+      ctx.ellipse(sx - 3, sy + 1, 5, 2, 0, 0, Math.PI * 2);
       ctx.fill();
     }
   }
