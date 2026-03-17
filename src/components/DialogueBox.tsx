@@ -85,7 +85,7 @@ export default function DialogueBox({ dialogue, npcName, npcIcon, onResponse, on
                        border border-primary/30 text-primary text-xs font-display
                        transition-all duration-200 active:scale-[0.97]"
           >
-            Продолжить →
+            Продовжити →
           </button>
         )}
       </div>

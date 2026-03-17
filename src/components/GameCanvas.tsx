@@ -1,13 +1,15 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { Position, MapId } from '../game/types';
 import { findPath } from '../game/pathfinding';
-import { renderMap, renderCharacter, renderNPCs, renderPathPreview, renderMonsters, toIso, fromIso } from '../game/renderer';
+import { renderMap, renderCharacter, renderNPCs, renderPathPreview, renderMonsters, renderMika, toIso, fromIso } from '../game/renderer';
 import { npcs as npcData } from '../game/dialogueData';
 import { NPC, DialogueNode, QuestEntry } from '../game/types';
 import { dialogues } from '../game/dialogueData';
 import { getCurrentMapData, findPortalNearby } from '../game/mapSystem';
-import { Monster, CombatState, PlayerCombatStats, generateDungeonMonsters, createInitialPlayerStats, performAttack, getXpForLevel } from '../game/combatSystem';
+import { Monster, CombatState, PlayerCombatStats, generateDungeonMonsters, createInitialPlayerStats, performAttack, getXpForLevel, hasLineOfSight, getRandomPatrolTarget, findFarthestPoint } from '../game/combatSystem';
+import { isDungeonWalkable, dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT } from '../game/dungeonMapData';
 import characterSrc from '@/assets/character-kuromi-girl.png';
+import mikaSrc from '@/assets/character-mika.png';
 import DialogueBox from './DialogueBox';
 import CombatUI from './CombatUI';
 import GameHUD from './GameHUD';
@@ -18,11 +20,15 @@ const PLAYER_SPEED = 0.06;
 const NPC_INTERACT_DIST = 2.5;
 const CAMERA_LERP = 0.08;
 const MONSTER_INTERACT_DIST = 2;
+const MONSTER_SPEED = 0.015;
+const MONSTER_CHASE_SPEED = 0.03;
+const MONSTER_UPDATE_INTERVAL = 500; // ms between AI updates
 
 export default function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
   const charImgRef = useRef<HTMLImageElement | null>(null);
+  const mikaImgRef = useRef<HTMLImageElement | null>(null);
 
   const playerRef = useRef<Position>({ x: 15, y: 15 });
   const targetRef = useRef<Position | null>(null);
@@ -38,11 +44,15 @@ export default function GameCanvas() {
   const [currentDialogue, setCurrentDialogue] = useState<DialogueNode | null>(null);
   const [activeNpc, setActiveNpc] = useState<NPC | null>(null);
   const [questLog, setQuestLog] = useState<QuestEntry[]>([
-    { id: 'main', title: 'Найти Мику', description: 'Подруга Мику пропала. Нужно расспросить людей в городе.', completed: false, timestamp: '14 часов назад' },
+    { id: 'main', title: 'Знайти Міку', description: 'Подружка Міку зникла. Потрібно розпитати людей у місті.', completed: false, timestamp: '14 годин тому' },
   ]);
   const [showQuestLog, setShowQuestLog] = useState(false);
   const [gameTime, setGameTime] = useState('21:47');
   const [transitioning, setTransitioning] = useState(false);
+  const [gameWon, setGameWon] = useState(false);
+
+  // Mika position
+  const mikaPos = useRef<Position>(findFarthestPoint());
 
   // Combat state
   const [monsters, setMonsters] = useState<Monster[]>(() => generateDungeonMonsters());
@@ -53,6 +63,7 @@ export default function GameCanvas() {
     active: false, monster: null, playerTurn: true, log: [], result: 'none',
   });
   const defendingRef = useRef(false);
+  const lastMonsterUpdateRef = useRef(0);
 
   // Keep refs in sync
   useEffect(() => { monstersRef.current = monsters; }, [monsters]);
@@ -62,10 +73,36 @@ export default function GameCanvas() {
     const img = new Image();
     img.src = characterSrc;
     img.onload = () => { charImgRef.current = img; };
+    const mikaImg = new Image();
+    mikaImg.src = mikaSrc;
+    mikaImg.onload = () => { mikaImgRef.current = mikaImg; };
   }, []);
 
   useEffect(() => {
     const { sx, sy } = toIso(playerRef.current.x, playerRef.current.y);
+    cameraRef.current = { x: sx, y: sy };
+  }, []);
+
+  // Restart game
+  const handleRestart = useCallback(() => {
+    playerRef.current = { x: 15, y: 15 };
+    targetRef.current = null;
+    pathRef.current = [];
+    pathIndexRef.current = 0;
+    currentMapRef.current = 'city';
+    setCurrentMap('city');
+    setMonsters(generateDungeonMonsters());
+    setPlayerStats(createInitialPlayerStats());
+    mikaPos.current = findFarthestPoint();
+    setGameWon(false);
+    setCurrentDialogue(null);
+    setActiveNpc(null);
+    setQuestLog([
+      { id: 'main', title: 'Знайти Міку', description: 'Подружка Міку зникла. Потрібно розпитати людей у місті.', completed: false, timestamp: '14 годин тому' },
+    ]);
+    setNpcs(npcData.map(n => ({ ...n })));
+    setCombat({ active: false, monster: null, playerTurn: true, log: [], result: 'none' });
+    const { sx, sy } = toIso(15, 15);
     cameraRef.current = { x: sx, y: sy };
   }, []);
 
@@ -97,7 +134,7 @@ export default function GameCanvas() {
       active: true,
       monster: { ...monster },
       playerTurn: true,
-      log: [`⚔️ ${monster.name} преграждает путь!`],
+      log: [`⚔️ ${monster.name} перегороджує шлях!`],
       result: 'none',
     });
   }, []);
@@ -108,10 +145,9 @@ export default function GameCanvas() {
       const stats = playerStatsRef.current;
       const { damage, critical } = performAttack(stats, prev.monster, combatRand);
       const newMonsterHp = prev.monster.hp - damage;
-      const log = [...prev.log, `⚔️ Ты ${critical ? 'КРИТ! ' : ''}наносишь ${damage} урона!`];
+      const log = [...prev.log, `⚔️ Ти ${critical ? 'КРИТ! ' : ''}завдаєш ${damage} шкоди!`];
 
       if (newMonsterHp <= 0) {
-        // Monster defeated
         setMonsters(ms => ms.map(m => m.id === prev.monster!.id ? { ...m, isAlive: false } : m));
         const xpGain = prev.monster.xpReward;
         setPlayerStats(ps => {
@@ -126,10 +162,9 @@ export default function GameCanvas() {
           }
           return { ...ps, xp: newXp };
         });
-        return { ...prev, monster: { ...prev.monster, hp: 0 }, log: [...log, `🎉 ${prev.monster.name} повержен!`], result: 'win' };
+        return { ...prev, monster: { ...prev.monster, hp: 0 }, log: [...log, `🎉 ${prev.monster.name} переможений!`], result: 'win' };
       }
 
-      // Monster's turn after short delay
       setTimeout(() => {
         setCombat(c => {
           if (!c.monster || c.result !== 'none') return c;
@@ -143,7 +178,7 @@ export default function GameCanvas() {
             if (newHp <= 0) {
               setCombat(cc => ({
                 ...cc,
-                log: [...cc.log, `💀 ${c.monster!.name} наносит ${actualDmg} урона! Ты побеждён...`],
+                log: [...cc.log, `💀 ${c.monster!.name} завдає ${actualDmg} шкоди! Тебе переможено...`],
                 result: 'lose',
                 playerTurn: false,
               }));
@@ -155,7 +190,7 @@ export default function GameCanvas() {
           return {
             ...c,
             monster: { ...c.monster, hp: newMonsterHp },
-            log: [...c.log, `${mCrit ? '💥 КРИТ! ' : ''}${c.monster.name} наносит ${actualDmg} урона!${defendingRef.current ? ' (блок)' : ''}`],
+            log: [...c.log, `${mCrit ? '💥 КРИТ! ' : ''}${c.monster.name} завдає ${actualDmg} шкоди!`],
             playerTurn: true,
           };
         });
@@ -169,9 +204,8 @@ export default function GameCanvas() {
     setCombat(prev => {
       if (!prev.monster || prev.result !== 'none' || !prev.playerTurn) return prev;
       defendingRef.current = true;
-      const log = [...prev.log, '🛡️ Ты принимаешь защитную стойку!'];
+      const log = [...prev.log, '🛡️ Ти приймаєш захисну стійку!'];
 
-      // Monster attacks
       setTimeout(() => {
         setCombat(c => {
           if (!c.monster || c.result !== 'none') return c;
@@ -183,7 +217,7 @@ export default function GameCanvas() {
           setPlayerStats(ps => {
             const newHp = ps.hp - actualDmg;
             if (newHp <= 0) {
-              setCombat(cc => ({ ...cc, log: [...cc.log, `💀 Даже блок не помог...`], result: 'lose', playerTurn: false }));
+              setCombat(cc => ({ ...cc, log: [...cc.log, `💀 Навіть блок не допоміг...`], result: 'lose', playerTurn: false }));
               return { ...ps, hp: 0 };
             }
             return { ...ps, hp: newHp };
@@ -191,7 +225,7 @@ export default function GameCanvas() {
 
           return {
             ...c,
-            log: [...c.log, `🛡️ Блок! ${c.monster.name} наносит всего ${actualDmg} урона!`],
+            log: [...c.log, `🛡️ Блок! ${c.monster.name} завдає лише ${actualDmg} шкоди!`],
             playerTurn: true,
           };
         });
@@ -205,9 +239,8 @@ export default function GameCanvas() {
     setCombat(prev => {
       if (prev.result !== 'none') return prev;
       if (Math.random() > 0.4) {
-        return { ...prev, log: [...prev.log, '🏃 Удалось сбежать!'], result: 'fled' };
+        return { ...prev, log: [...prev.log, '🏃 Вдалося втекти!'], result: 'fled' };
       }
-      // Failed to flee, monster attacks
       setTimeout(() => {
         setCombat(c => {
           if (!c.monster || c.result !== 'none') return c;
@@ -215,21 +248,20 @@ export default function GameCanvas() {
           setPlayerStats(ps => {
             const newHp = ps.hp - mDmg;
             if (newHp <= 0) {
-              setCombat(cc => ({ ...cc, log: [...cc.log, `💀 Не удалось убежать...`], result: 'lose' }));
+              setCombat(cc => ({ ...cc, log: [...cc.log, `💀 Не вдалося втекти...`], result: 'lose' }));
               return { ...ps, hp: 0 };
             }
             return { ...ps, hp: newHp };
           });
-          return { ...c, log: [...c.log, `❌ Не удалось сбежать! ${c.monster.name} наносит ${mDmg} урона!`], playerTurn: true };
+          return { ...c, log: [...c.log, `❌ Не вдалося втекти! ${c.monster.name} завдає ${mDmg} шкоди!`], playerTurn: true };
         });
       }, 600);
-      return { ...prev, log: [...prev.log, '❌ Побег не удался!'], playerTurn: false };
+      return { ...prev, log: [...prev.log, '❌ Втеча не вдалася!'], playerTurn: false };
     });
   }, [combatRand]);
 
   const handleCombatEnd = useCallback(() => {
     if (combat.result === 'lose') {
-      // Respawn at portal with half HP
       setPlayerStats(ps => ({ ...ps, hp: Math.max(10, Math.floor(ps.maxHp / 2)) }));
       switchMap('city', { x: 15, y: 15 });
     }
@@ -238,6 +270,12 @@ export default function GameCanvas() {
 
   const lastClickRef = useRef(0);
   const lastTouchRef = useRef(0);
+
+  const startDialogue = useCallback((npc: NPC) => {
+    setActiveNpc(npc);
+    setCurrentDialogue(dialogues[npc.dialogueId]);
+    setNpcs(prev => prev.map(n => n.id === npc.id ? { ...n, hasInteracted: true } : n));
+  }, []);
 
   const handleCanvasInteraction = useCallback((e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const now = Date.now();
@@ -308,6 +346,39 @@ export default function GameCanvas() {
         switchMap(portal.toMap, portal.toPos);
       }
       return;
+    }
+
+    // Check Mika interaction (dungeon only)
+    if (currentMapRef.current === 'dungeon' && !gameWon) {
+      const mika = mikaPos.current;
+      const mdx = mika.x - tileX;
+      const mdy = mika.y - tileY;
+      if (Math.sqrt(mdx * mdx + mdy * mdy) < NPC_INTERACT_DIST) {
+        const path = findPath(
+          { x: Math.round(playerRef.current.x), y: Math.round(playerRef.current.y) },
+          { x: Math.round(mika.x), y: Math.round(mika.y) },
+          mapData.tiles, mapData.width, mapData.height, mapData.isWalkable
+        );
+        if (path.length > 1) {
+          const walkPath = path.slice(1);
+          if (walkPath.length > 1) walkPath.pop();
+          pathRef.current = walkPath;
+          pathIndexRef.current = 0;
+          targetRef.current = walkPath[walkPath.length - 1];
+          setTimeout(() => {
+            startDialogue({
+              id: 'mika', name: 'Міка', pos: mika, dialogueId: 'mika_start',
+              icon: '👧', hasInteracted: false, description: 'Твоя загублена подружка',
+            });
+          }, walkPath.length * 120);
+        } else {
+          startDialogue({
+            id: 'mika', name: 'Міка', pos: mika, dialogueId: 'mika_start',
+            icon: '👧', hasInteracted: false, description: 'Твоя загублена подружка',
+          });
+        }
+        return;
+      }
     }
 
     // Check monster interaction (dungeon only)
@@ -382,25 +453,24 @@ export default function GameCanvas() {
         targetRef.current = walkPath[walkPath.length - 1];
       }
     }
-  }, [currentDialogue, npcs, transitioning, switchMap, startCombat, combat.active]);
-
-  const startDialogue = useCallback((npc: NPC) => {
-    setActiveNpc(npc);
-    setCurrentDialogue(dialogues[npc.dialogueId]);
-    setNpcs(prev => prev.map(n => n.id === npc.id ? { ...n, hasInteracted: true } : n));
-  }, []);
+  }, [currentDialogue, npcs, transitioning, switchMap, startCombat, combat.active, gameWon, startDialogue]);
 
   const handleDialogueResponse = useCallback((nextId: string) => {
     const next = dialogues[nextId];
     if (next) {
       if (next.questUpdate) {
-        setQuestLog(prev => [...prev, {
-          id: `quest_${Date.now()}`,
-          title: 'Новая зацепка!',
-          description: next.questUpdate!,
-          completed: false,
-          timestamp: gameTime,
-        }]);
+        if (next.questUpdate === 'ПЕРЕМОГА') {
+          setGameWon(true);
+          setQuestLog(prev => prev.map(q => q.id === 'main' ? { ...q, completed: true } : q));
+        } else {
+          setQuestLog(prev => [...prev, {
+            id: `quest_${Date.now()}`,
+            title: 'Нова підказка!',
+            description: next.questUpdate!,
+            completed: false,
+            timestamp: gameTime,
+          }]);
+        }
       }
       setCurrentDialogue(next);
     } else {
@@ -411,17 +481,109 @@ export default function GameCanvas() {
 
   const handleDialogueEnd = useCallback(() => {
     if (currentDialogue?.questUpdate) {
-      setQuestLog(prev => [...prev, {
-        id: `quest_${Date.now()}`,
-        title: 'Новая зацепка!',
-        description: currentDialogue.questUpdate!,
-        completed: false,
-        timestamp: gameTime,
-      }]);
+      if (currentDialogue.questUpdate === 'ПЕРЕМОГА') {
+        setGameWon(true);
+        setQuestLog(prev => prev.map(q => q.id === 'main' ? { ...q, completed: true } : q));
+      } else {
+        setQuestLog(prev => [...prev, {
+          id: `quest_${Date.now()}`,
+          title: 'Нова підказка!',
+          description: currentDialogue.questUpdate!,
+          completed: false,
+          timestamp: gameTime,
+        }]);
+      }
     }
     setCurrentDialogue(null);
     setActiveNpc(null);
   }, [currentDialogue, gameTime]);
+
+  // Monster AI update
+  const updateMonsterAI = useCallback((time: number, dt: number) => {
+    if (currentMapRef.current !== 'dungeon' || combat.active) return;
+
+    const playerPos = playerRef.current;
+    const shouldUpdate = time - lastMonsterUpdateRef.current > MONSTER_UPDATE_INTERVAL;
+    if (shouldUpdate) lastMonsterUpdateRef.current = time;
+
+    setMonsters(prevMonsters => {
+      let changed = false;
+      const newMonsters = prevMonsters.map(m => {
+        if (!m.isAlive) return m;
+
+        // Check line of sight to player
+        const canSeePlayer = hasLineOfSight(m.pos, playerPos, 8);
+        
+        let newState = m.state;
+        if (canSeePlayer) {
+          newState = 'chase';
+        } else if (m.state === 'chase') {
+          newState = 'patrol';
+        }
+
+        // Check if monster is adjacent to player -> start combat
+        const distToPlayer = Math.sqrt(
+          (m.pos.x - playerPos.x) ** 2 + (m.pos.y - playerPos.y) ** 2
+        );
+        if (distToPlayer < 1.2) {
+          // Monster touches player - start combat
+          setTimeout(() => startCombat(m), 0);
+          return m;
+        }
+
+        let newPos = { ...m.pos };
+        let newPatrolTarget = m.patrolTarget;
+
+        if (newState === 'chase') {
+          // Move toward player
+          const dx = playerPos.x - m.pos.x;
+          const dy = playerPos.y - m.pos.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist > 1.2) {
+            const step = MONSTER_CHASE_SPEED * dt;
+            const nx = m.pos.x + (dx / dist) * step;
+            const ny = m.pos.y + (dy / dist) * step;
+            const tileAtNew = dungeonTiles[Math.round(ny)]?.[Math.round(nx)];
+            if (tileAtNew !== undefined && isDungeonWalkable(tileAtNew)) {
+              newPos = { x: nx, y: ny };
+              changed = true;
+            }
+          }
+        } else {
+          // Patrol: pick random target and slowly move
+          if (shouldUpdate) {
+            if (!newPatrolTarget || (Math.abs(m.pos.x - newPatrolTarget.x) < 0.3 && Math.abs(m.pos.y - newPatrolTarget.y) < 0.3)) {
+              newPatrolTarget = getRandomPatrolTarget(m.pos, Math.random);
+            }
+          }
+          if (newPatrolTarget) {
+            const dx = newPatrolTarget.x - m.pos.x;
+            const dy = newPatrolTarget.y - m.pos.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist > 0.2) {
+              const step = MONSTER_SPEED * dt;
+              const nx = m.pos.x + (dx / dist) * step;
+              const ny = m.pos.y + (dy / dist) * step;
+              const tileAtNew = dungeonTiles[Math.round(ny)]?.[Math.round(nx)];
+              if (tileAtNew !== undefined && isDungeonWalkable(tileAtNew)) {
+                newPos = { x: nx, y: ny };
+                changed = true;
+              } else {
+                newPatrolTarget = null;
+              }
+            }
+          }
+        }
+
+        if (newPos.x !== m.pos.x || newPos.y !== m.pos.y || newState !== m.state || newPatrolTarget !== m.patrolTarget) {
+          changed = true;
+          return { ...m, pos: newPos, state: newState, patrolTarget: newPatrolTarget };
+        }
+        return m;
+      });
+      return changed ? newMonsters : prevMonsters;
+    });
+  }, [combat.active, startCombat]);
 
   // Game loop
   useEffect(() => {
@@ -470,6 +632,9 @@ export default function GameCanvas() {
         }
       }
 
+      // Update monster AI
+      updateMonsterAI(time, dt);
+
       // Camera
       const targetIso = toIso(playerRef.current.x, playerRef.current.y);
       cameraRef.current = {
@@ -492,10 +657,11 @@ export default function GameCanvas() {
         renderNPCs(ctx, npcs, cameraRef.current, canvas.width, canvas.height, zoom, time);
       }
       
-      // Render dungeon monsters
+      // Render dungeon entities
       if (mapId === 'dungeon') {
         const aliveMonsters = monstersRef.current.filter(m => m.isAlive);
         renderMonsters(ctx, aliveMonsters, cameraRef.current, canvas.width, canvas.height, zoom, time);
+        renderMika(ctx, mikaPos.current, cameraRef.current, canvas.width, canvas.height, zoom, mikaImgRef.current, time);
       }
       
       renderCharacter(ctx, playerRef.current, cameraRef.current, canvas.width, canvas.height, zoom, charImgRef.current);
@@ -509,7 +675,7 @@ export default function GameCanvas() {
       cancelAnimationFrame(animRef.current);
       window.removeEventListener('resize', resize);
     };
-  }, [npcs, currentMap, monsters]);
+  }, [npcs, currentMap, monsters, updateMonsterAI]);
 
   // Pinch zoom
   useEffect(() => {
@@ -559,8 +725,22 @@ export default function GameCanvas() {
       {transitioning && (
         <div className="absolute inset-0 bg-black z-50 transition-opacity duration-500 flex items-center justify-center">
           <p className="text-purple-400 text-xl font-bold animate-pulse">
-            {currentMap === 'city' ? '⚔️ Вход в подземелье...' : '🏙️ Возвращение в город...'}
+            {currentMap === 'city' ? '⚔️ Вхід до підземелля...' : '🏙️ Повернення до міста...'}
           </p>
+        </div>
+      )}
+
+      {/* Victory overlay */}
+      {gameWon && (
+        <div className="fixed top-1/4 left-1/2 -translate-x-1/2 z-50 glass-panel px-6 py-4 neon-glow text-center space-y-2">
+          <h2 className="font-display text-2xl text-primary font-bold">🎉 ПЕРЕМОГА! 🎉</h2>
+          <p className="text-foreground text-sm">Ти знайшла Міку! Подружки знову разом! 💕</p>
+          <button
+            onClick={handleRestart}
+            className="mt-2 px-4 py-2 rounded-md bg-primary/20 hover:bg-primary/30 border border-primary/30 text-primary text-xs font-display transition-all active:scale-95"
+          >
+            Грати знову
+          </button>
         </div>
       )}
 
@@ -574,7 +754,7 @@ export default function GameCanvas() {
       {/* Map indicator */}
       <div className="fixed top-14 right-3 z-40">
         <div className="glass-panel px-3 py-1 rounded-full text-xs font-bold" style={{ color: currentMap === 'dungeon' ? '#e74c3c' : '#4a9e5c' }}>
-          {currentMap === 'dungeon' ? '⚔️ Подземелье' : '🏙️ Город'}
+          {currentMap === 'dungeon' ? '⚔️ Підземелля' : '🏙️ Місто'}
         </div>
       </div>
 
@@ -586,6 +766,17 @@ export default function GameCanvas() {
         mapHeight={mapData.height}
         isDungeon={currentMap === 'dungeon'}
       />
+
+      {/* Start button under minimap */}
+      <div className="fixed z-40" style={{ top: currentMap === 'dungeon' ? '190px' : '130px', left: '12px' }}>
+        <button
+          onClick={handleRestart}
+          className="glass-panel px-3 py-1.5 text-xs font-display font-bold text-primary 
+                     hover:bg-primary/20 active:scale-95 transition-all border border-primary/30"
+        >
+          🔄 Start
+        </button>
+      </div>
 
       {showQuestLog && (
         <QuestLog
