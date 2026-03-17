@@ -15,7 +15,7 @@ export default function GameHUD({ gameTime, questCount, onQuestLogToggle, player
         {/* Game title */}
         <div className="glass-panel px-3 py-2 pointer-events-auto">
           <h1 className="font-display text-xs font-bold text-primary tracking-tight">
-            LOST IN NEON-TOKYO
+            ЗАГУБЛЕНА В НЕОН-ТОКІО
           </h1>
           <p className="text-muted-foreground text-[10px] font-mono">{gameTime}</p>
         </div>
@@ -28,7 +28,7 @@ export default function GameHUD({ gameTime, questCount, onQuestLogToggle, player
         >
           <div className="flex items-center gap-2">
             <span className="text-sm">📋</span>
-            <span className="font-display text-xs text-foreground">Квесты</span>
+            <span className="font-display text-xs text-foreground">Завдання</span>
             {questCount > 1 && (
               <span className="bg-primary text-primary-foreground text-[10px] font-mono 
                              rounded-full w-4 h-4 flex items-center justify-center">
@@ -43,7 +43,7 @@ export default function GameHUD({ gameTime, questCount, onQuestLogToggle, player
       {playerStats && (
         <div className="fixed top-14 left-3 z-40 glass-panel px-3 py-2 space-y-1">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-muted-foreground font-mono">Ур.{playerStats.level}</span>
+            <span className="text-[10px] text-muted-foreground font-mono">Рів.{playerStats.level}</span>
             <span className="text-[10px] text-muted-foreground font-mono">
               ❤️ {playerStats.hp}/{playerStats.maxHp}
             </span>
@@ -66,7 +66,7 @@ export default function GameHUD({ gameTime, questCount, onQuestLogToggle, player
       {/* Hint text */}
       <div className="fixed bottom-20 left-0 right-0 text-center pointer-events-none z-30">
         <p className="text-muted-foreground text-[10px] font-body animate-pulse-neon">
-          Нажми на землю чтобы идти • Нажми на NPC чтобы говорить
+          Натисни на землю щоб іти • Натисни на NPC щоб говорити
         </p>
       </div>
     </>

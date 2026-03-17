@@ -41,15 +41,13 @@ export function renderMap(
   ctx.scale(zoom, zoom);
   ctx.translate(-camera.x, -camera.y);
 
-  // Convert screen edges to world iso coords for tight culling
   const halfW = (canvasW / 2) / zoom;
   const halfH = (canvasH / 3) / zoom;
   const viewLeft = camera.x - halfW - TILE_SIZE;
   const viewRight = camera.x + halfW + TILE_SIZE;
-  const viewTop = camera.y - halfH - 60; // extra for tall buildings
+  const viewTop = camera.y - halfH - 60;
   const viewBottom = camera.y + halfH + TILE_SIZE;
 
-  // Convert iso view bounds to approximate tile range
   const topLeft = fromIso(viewLeft, viewTop);
   const topRight = fromIso(viewRight, viewTop);
   const botLeft = fromIso(viewLeft, viewBottom);
@@ -64,12 +62,8 @@ export function renderMap(
     for (let x = minTileX; x <= maxTileX; x++) {
       const tile = tiles[y]?.[x] ?? 0;
       if (tile === 0) continue;
-      
       const { sx, sy } = toIso(x, y);
-
-      // Final screen-space check
       if (sx < viewLeft || sx > viewRight || sy < viewTop || sy > viewBottom) continue;
-      
       renderTile(ctx, sx, sy, tile, x, y, mapId);
     }
   }
@@ -82,7 +76,6 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
   const color = isDungeon ? getDungeonTileColor(tile) : getTileColor(tile);
   const height = isDungeon ? getDungeonBuildingHeight(tile) : getBuildingHeight(tile, tileX, tileY);
 
-  // Draw flat tile (diamond)
   ctx.beginPath();
   ctx.moveTo(sx, sy - HALF_H);
   ctx.lineTo(sx + HALF_W, sy);
@@ -95,7 +88,6 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
   ctx.lineWidth = 0.5;
   ctx.stroke();
 
-  // City-specific decorations
   if (!isDungeon) {
     if (tile === TileType.ROAD) {
       ctx.beginPath();
@@ -107,7 +99,6 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
     }
   }
 
-  // Water effect (both maps)
   if (tile === TileType.WATER) {
     ctx.fillStyle = isDungeon ? 'rgba(100,180,255,0.2)' : 'rgba(255,255,255,0.15)';
     ctx.beginPath();
@@ -121,14 +112,12 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
     }
   }
 
-  // Dungeon-specific decorations
   if (isDungeon) {
     if (tile === TileType.LAVA) {
       ctx.fillStyle = 'rgba(255,200,50,0.3)';
       ctx.beginPath();
       ctx.ellipse(sx, sy, 10, 4, 0, 0, Math.PI * 2);
       ctx.fill();
-      // Glow
       ctx.fillStyle = 'rgba(255,100,0,0.15)';
       ctx.beginPath();
       ctx.ellipse(sx, sy, 14, 6, 0, 0, Math.PI * 2);
@@ -136,7 +125,6 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
     }
 
     if (tile === TileType.PORTAL) {
-      // Pulsing purple glow
       ctx.fillStyle = 'rgba(156,39,176,0.4)';
       ctx.beginPath();
       ctx.ellipse(sx, sy, 16, 7, 0, 0, Math.PI * 2);
@@ -162,9 +150,7 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
     }
   }
 
-  // Draw height (walls/buildings)
   if (height > 0 && tile !== TileType.TREE) {
-    // Left face
     ctx.beginPath();
     ctx.moveTo(sx - HALF_W, sy);
     ctx.lineTo(sx, sy + HALF_H);
@@ -175,7 +161,6 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
     ctx.fill();
     ctx.stroke();
 
-    // Right face
     ctx.beginPath();
     ctx.moveTo(sx + HALF_W, sy);
     ctx.lineTo(sx, sy + HALF_H);
@@ -186,7 +171,6 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
     ctx.fill();
     ctx.stroke();
 
-    // Top face
     ctx.beginPath();
     ctx.moveTo(sx, sy - HALF_H - height);
     ctx.lineTo(sx + HALF_W, sy - height);
@@ -197,17 +181,14 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
     ctx.fill();
     ctx.stroke();
 
-    // Windows for city buildings
     if (!isDungeon && (tile === TileType.BUILDING || tile === TileType.BUILDING_RED || tile === TileType.BUILDING_LIGHT)) {
       drawWindows(ctx, sx, sy, height, tile, tileX, tileY);
     }
 
-    // Dungeon building windows
     if (isDungeon && (tile === TileType.DUNGEON_BUILDING_PURPLE || tile === TileType.DUNGEON_BUILDING_BROWN || tile === TileType.DUNGEON_BUILDING_ORANGE)) {
       drawDungeonWindows(ctx, sx, sy, height, tile, tileX, tileY);
     }
 
-    // Crystal glow
     if (tile === TileType.CRYSTAL) {
       ctx.fillStyle = 'rgba(0,188,212,0.3)';
       ctx.beginPath();
@@ -216,7 +197,6 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
     }
   }
 
-  // Tree rendering (city only)
   if (tile === TileType.TREE && !isDungeon) {
     ctx.fillStyle = '#5c4033';
     ctx.fillRect(sx - 2, sy - 10, 4, 10);
@@ -229,9 +209,7 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
     }
   }
 
-  // Portal indicator in city (on the red building near green zone)
   if (!isDungeon && tile === TileType.BUILDING_RED && tileX === 23 && tileY === 6) {
-    // Glowing portal effect on the building
     ctx.fillStyle = 'rgba(156,39,176,0.5)';
     ctx.beginPath();
     ctx.ellipse(sx, sy - height / 2, 8, 12, 0, 0, Math.PI * 2);
@@ -297,7 +275,6 @@ function drawDungeonWindows(ctx: CanvasRenderingContext2D, sx: number, sy: numbe
   const ww = 2.5;
   const wh = 3;
 
-  // Left wall
   for (let row = 0; row < rows; row++) {
     const t = 0.5;
     const rowT = (row + 1) / (rows + 1);
@@ -309,7 +286,6 @@ function drawDungeonWindows(ctx: CanvasRenderingContext2D, sx: number, sy: numbe
     ctx.fillRect(baseX - ww / 2, wy, ww, wh);
   }
 
-  // Right wall
   for (let row = 0; row < rows; row++) {
     const t = 0.5;
     const rowT = (row + 1) / (rows + 1);
@@ -364,6 +340,69 @@ export function renderCharacter(
     ctx.lineWidth = 2;
     ctx.stroke();
   }
+
+  ctx.restore();
+}
+
+export function renderMika(
+  ctx: CanvasRenderingContext2D,
+  pos: Position,
+  camera: Position,
+  canvasW: number,
+  canvasH: number,
+  zoom: number,
+  mikaImage: HTMLImageElement | null,
+  time: number
+) {
+  ctx.save();
+  ctx.translate(canvasW / 2, canvasH / 3);
+  ctx.scale(zoom, zoom);
+  ctx.translate(-camera.x, -camera.y);
+
+  const { sx, sy } = toIso(pos.x, pos.y);
+  const floatY = Math.sin(time * 0.003) * 2;
+
+  // Glow effect
+  const pulse = 0.5 + Math.sin(time * 0.004) * 0.3;
+  ctx.fillStyle = `rgba(255, 150, 200, ${pulse * 0.3})`;
+  ctx.beginPath();
+  ctx.ellipse(sx, sy - 10 + floatY, 20, 12, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (mikaImage && mikaImage.complete) {
+    const size = 42;
+    ctx.drawImage(mikaImage, sx - size / 2, sy - size + 5 + floatY, size, size);
+  } else {
+    ctx.beginPath();
+    ctx.arc(sx, sy - 12 + floatY, 10, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffb6c1';
+    ctx.fill();
+    ctx.strokeStyle = '#ff69b4';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.font = '14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('👧', sx, sy - 12 + floatY);
+  }
+
+  // Name label
+  ctx.font = 'bold 9px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffb6c1';
+  ctx.shadowColor = 'rgba(255, 105, 180, 0.8)';
+  ctx.shadowBlur = 8;
+  ctx.fillText('Міка 💕', sx, sy - 38 + floatY);
+  ctx.shadowBlur = 0;
+
+  // Exclamation
+  const pulseScale = 0.8 + Math.sin(time * 0.005) * 0.2;
+  ctx.font = `bold ${14 * pulseScale}px Syne, sans-serif`;
+  ctx.fillStyle = '#ff69b4';
+  ctx.shadowColor = 'rgba(255, 105, 180, 0.8)';
+  ctx.shadowBlur = 10;
+  ctx.fillText('!', sx, sy - 48 + floatY);
+  ctx.shadowBlur = 0;
 
   ctx.restore();
 }
@@ -475,13 +514,11 @@ export function renderMonsters(
     const { sx, sy } = toIso(m.pos.x, m.pos.y);
     const floatY = Math.sin(time * 0.004 + m.pos.x * 3) * 2;
 
-    // Shadow
     ctx.beginPath();
     ctx.ellipse(sx, sy + 2, 8, 3, 0, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.fill();
 
-    // Body circle
     ctx.beginPath();
     ctx.arc(sx, sy - 12 + floatY, 12, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(40, 10, 10, 0.9)';
@@ -490,13 +527,11 @@ export function renderMonsters(
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Icon
     ctx.font = '14px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(m.icon, sx, sy - 11 + floatY);
 
-    // HP bar
     const hpPct = m.hp / m.maxHp;
     const barW = 18;
     const barH = 3;
@@ -507,7 +542,6 @@ export function renderMonsters(
     ctx.fillStyle = hpPct > 0.5 ? '#4caf50' : hpPct > 0.25 ? '#ff9800' : '#f44336';
     ctx.fillRect(barX, barY, barW * hpPct, barH);
 
-    // Aggro indicator
     const pulse = 0.5 + Math.sin(time * 0.006 + m.pos.y) * 0.5;
     ctx.fillStyle = `rgba(255, 50, 50, ${pulse * 0.6})`;
     ctx.font = `bold 10px sans-serif`;

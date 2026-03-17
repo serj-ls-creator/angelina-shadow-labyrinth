@@ -1,5 +1,4 @@
-import { useState, useCallback } from 'react';
-import { Monster, PlayerCombatStats, CombatState, performAttack, getXpForLevel } from '../game/combatSystem';
+import { Monster, PlayerCombatStats, CombatState, getXpForLevel } from '../game/combatSystem';
 
 interface CombatUIProps {
   combat: CombatState;
@@ -22,9 +21,8 @@ export default function CombatUI({ combat, playerStats, onAttack, onDefend, onFl
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div className="glass-panel p-4 max-w-sm w-full neon-glow space-y-4">
-        {/* Title */}
         <div className="text-center">
-          <h2 className="font-display text-primary text-sm font-bold">⚔️ БОЙ!</h2>
+          <h2 className="font-display text-primary text-sm font-bold">⚔️ БІЙ!</h2>
         </div>
 
         {/* Monster info */}
@@ -42,7 +40,7 @@ export default function CombatUI({ combat, playerStats, onAttack, onDefend, onFl
               />
             </div>
             <p className="text-muted-foreground text-[10px] mt-0.5">
-              HP: {Math.max(0, monster.hp)}/{monster.maxHp} | ATK: {monster.attack} | DEF: {monster.defense}
+              HP: {Math.max(0, monster.hp)}/{monster.maxHp} | АТК: {monster.attack} | ЗАХ: {monster.defense}
             </p>
           </div>
         </div>
@@ -51,7 +49,7 @@ export default function CombatUI({ combat, playerStats, onAttack, onDefend, onFl
         <div className="flex items-center gap-3 p-2 rounded-md bg-muted/30 border border-primary/30">
           <span className="text-2xl">🎀</span>
           <div className="flex-1">
-            <p className="text-foreground text-xs font-bold">Куроми (Ур. {playerStats.level})</p>
+            <p className="text-foreground text-xs font-bold">Куромі (Рів. {playerStats.level})</p>
             <div className="w-full bg-muted/50 rounded-full h-2 mt-1">
               <div
                 className="h-2 rounded-full transition-all duration-300"
@@ -62,7 +60,7 @@ export default function CombatUI({ combat, playerStats, onAttack, onDefend, onFl
               />
             </div>
             <p className="text-muted-foreground text-[10px] mt-0.5">
-              HP: {Math.max(0, playerStats.hp)}/{playerStats.maxHp} | ATK: {playerStats.attack} | DEF: {playerStats.defense} | XP: {playerStats.xp}/{xpNeeded}
+              HP: {Math.max(0, playerStats.hp)}/{playerStats.maxHp} | АТК: {playerStats.attack} | ЗАХ: {playerStats.defense} | XP: {playerStats.xp}/{xpNeeded}
             </p>
           </div>
         </div>
@@ -91,28 +89,28 @@ export default function CombatUI({ combat, playerStats, onAttack, onDefend, onFl
               className="p-2 rounded-md bg-blue-500/20 hover:bg-blue-500/40 border border-blue-500/40
                          text-foreground text-xs font-bold transition-all active:scale-95"
             >
-              🛡️ Защита
+              🛡️ Захист
             </button>
             <button
               onClick={onFlee}
               className="p-2 rounded-md bg-yellow-500/20 hover:bg-yellow-500/40 border border-yellow-500/40
                          text-foreground text-xs font-bold transition-all active:scale-95"
             >
-              🏃 Бежать
+              🏃 Втекти
             </button>
           </div>
         ) : !isOver ? (
           <div className="text-center">
-            <p className="text-muted-foreground text-xs animate-pulse">Ход противника...</p>
+            <p className="text-muted-foreground text-xs animate-pulse">Хід противника...</p>
           </div>
         ) : (
           <div className="text-center space-y-2">
             <p className={`text-sm font-bold font-display ${
               combat.result === 'win' ? 'text-green-400' : combat.result === 'fled' ? 'text-yellow-400' : 'text-red-400'
             }`}>
-              {combat.result === 'win' && `🎉 Победа! +${monster.xpReward} XP`}
-              {combat.result === 'lose' && '💀 Поражение...'}
-              {combat.result === 'fled' && '🏃 Удалось сбежать!'}
+              {combat.result === 'win' && `🎉 Перемога! +${monster.xpReward} XP`}
+              {combat.result === 'lose' && '💀 Поразка...'}
+              {combat.result === 'fled' && '🏃 Вдалося втекти!'}
             </p>
             <button
               onClick={onEnd}
@@ -120,7 +118,7 @@ export default function CombatUI({ combat, playerStats, onAttack, onDefend, onFl
                          border border-primary/30 text-primary text-xs font-display
                          transition-all active:scale-95"
             >
-              Продолжить →
+              Продовжити →
             </button>
           </div>
         )}
