@@ -662,6 +662,9 @@ export default function GameCanvas() {
             y: playerRef.current.y + (dy / dist) * step,
           };
         }
+      if (time - playerPosUpdateTimer.current > 100) {
+        playerPosUpdateTimer.current = time;
+        setPlayerPosState({ ...playerRef.current });
       }
 
       // Update monster AI
