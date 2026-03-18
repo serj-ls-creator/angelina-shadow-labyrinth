@@ -691,7 +691,7 @@ export default function GameCanvas() {
       cancelAnimationFrame(animRef.current);
       window.removeEventListener('resize', resize);
     };
-  }, [npcs, currentMap, monsters, updateMonsterAI]);
+  }, [npcs, currentMap, updateMonsterAI]);
 
   // Pinch zoom
   useEffect(() => {
