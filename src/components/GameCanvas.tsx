@@ -775,7 +775,7 @@ export default function GameCanvas() {
       </div>
 
       <MiniMap
-        playerPos={playerRef.current}
+        playerPos={playerPosState}
         npcs={currentMap === 'city' ? npcs : []}
         mapTiles={mapData.tiles}
         mapWidth={mapData.width}
