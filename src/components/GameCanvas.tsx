@@ -273,6 +273,7 @@ export default function GameCanvas() {
       setPlayerStats(ps => ({ ...ps, hp: Math.max(10, Math.floor(ps.maxHp / 2)) }));
       switchMap('city', { x: 15, y: 15 });
     }
+    combatStartPendingRef.current = false;
     setCombat({ active: false, monster: null, playerTurn: true, log: [], result: 'none' });
   }, [combat.result, switchMap]);
 
