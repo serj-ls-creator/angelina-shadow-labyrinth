@@ -93,7 +93,8 @@ export default function GameCanvas() {
     pathIndexRef.current = 0;
     currentMapRef.current = 'city';
     setCurrentMap('city');
-    setMonsters(generateDungeonMonsters());
+    monstersRef.current = generateDungeonMonsters();
+    setMonstersSnapshot(monstersRef.current);
     setPlayerStats(createInitialPlayerStats());
     mikaPos.current = findFarthestPoint();
     setGameWon(false);
