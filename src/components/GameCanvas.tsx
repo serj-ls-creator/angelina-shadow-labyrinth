@@ -8,6 +8,7 @@ import { dialogues } from '../game/dialogueData';
 import { getCurrentMapData, findPortalNearby } from '../game/mapSystem';
 import { Monster, CombatState, PlayerCombatStats, generateDungeonMonsters, createInitialPlayerStats, performAttack, getXpForLevel, hasLineOfSight, getRandomPatrolTarget, findFarthestPoint } from '../game/combatSystem';
 import { isDungeonWalkable, dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT } from '../game/dungeonMapData';
+import { useIsMobile } from '../hooks/use-mobile';
 import characterSrc from '@/assets/character-kuromi-girl.png';
 import mikaSrc from '@/assets/character-mika.png';
 import DialogueBox from './DialogueBox';
@@ -20,8 +21,9 @@ const PLAYER_SPEED = 0.06;
 const NPC_INTERACT_DIST = 2.5;
 const CAMERA_LERP = 0.08;
 const MONSTER_INTERACT_DIST = 2;
-const MONSTER_SPEED = 0.015;
-const MONSTER_CHASE_SPEED = 0.03;
+// tiles per frame @60fps (scaled by dt / 16.67)
+const MONSTER_SPEED = 0.012;
+const MONSTER_CHASE_SPEED = 0.02;
 const MONSTER_UPDATE_INTERVAL = 500; // ms between AI updates
 
 export default function GameCanvas() {
