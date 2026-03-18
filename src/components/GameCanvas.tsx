@@ -151,7 +151,10 @@ export default function GameCanvas() {
       const log = [...prev.log, `⚔️ Ти ${critical ? 'КРИТ! ' : ''}завдаєш ${damage} шкоди!`];
 
       if (newMonsterHp <= 0) {
-        setMonsters(ms => ms.map(m => m.id === prev.monster!.id ? { ...m, isAlive: false } : m));
+        // Mark monster as dead in ref
+        const mId = prev.monster!.id;
+        monstersRef.current = monstersRef.current.map(m => m.id === mId ? { ...m, isAlive: false } : m);
+        setMonstersSnapshot([...monstersRef.current]);
         const xpGain = prev.monster.xpReward;
         setPlayerStats(ps => {
           const newXp = ps.xp + xpGain;
