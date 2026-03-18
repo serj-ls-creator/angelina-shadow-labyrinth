@@ -514,31 +514,48 @@ export default function GameCanvas() {
     const shouldUpdate = time - lastMonsterUpdateRef.current > MONSTER_UPDATE_INTERVAL;
     if (shouldUpdate) lastMonsterUpdateRef.current = time;
 
-    // Update monsters directly in ref (no React state!)
+    const dtScale = Math.min(dt, 33) / 16.667;
+    const speedScale = isMobile ? 0.68 : 1;
+
+    const isWalkableAt = (x: number, y: number) => {
+      const tx = Math.floor(x);
+      const ty = Math.floor(y);
+      const tile = dungeonTiles[ty]?.[tx];
+      return tile !== undefined && isDungeonWalkable(tile);
+    };
+
+    const tryMove = (from: Position, to: Position): Position => {
+      if (isWalkableAt(to.x, to.y)) return to;
+      if (isWalkableAt(to.x, from.y)) return { x: to.x, y: from.y };
+      if (isWalkableAt(from.x, to.y)) return { x: from.x, y: to.y };
+      return from;
+    };
+
     const prevMonsters = monstersRef.current;
     let changed = false;
-    const newMonsters = prevMonsters.map(m => {
+
+    const nextMonsters = prevMonsters.map((m) => {
       if (!m.isAlive) return m;
 
-      // Only check LOS on interval updates, not every frame
-      let canSeePlayer = m.state === 'chase'; // keep current state by default
+      let canSeePlayer = m.state === 'chase';
       if (shouldUpdate) {
         canSeePlayer = hasLineOfSight(m.pos, playerPos, 8);
       }
-      
-      let newState = m.state;
-      if (canSeePlayer) {
-        newState = 'chase';
-      } else if (shouldUpdate && m.state === 'chase') {
-        newState = 'patrol';
-      }
 
-      // Check if monster is adjacent to player -> start combat
-      const distToPlayer = Math.sqrt(
-        (m.pos.x - playerPos.x) ** 2 + (m.pos.y - playerPos.y) ** 2
-      );
-      if (distToPlayer < 1.2) {
-        setTimeout(() => startCombat(m), 0);
+      let newState = m.state;
+      if (canSeePlayer) newState = 'chase';
+      else if (shouldUpdate && m.state === 'chase') newState = 'patrol';
+
+      const distToPlayer = Math.hypot(m.pos.x - playerPos.x, m.pos.y - playerPos.y);
+      if (distToPlayer < 1.1) {
+        if (!combatStartPendingRef.current) {
+          combatStartPendingRef.current = true;
+          const encounterMonster = m;
+          setTimeout(() => {
+            combatStartPendingRef.current = false;
+            startCombat(encounterMonster);
+          }, 0);
+        }
         return m;
       }
 
@@ -548,36 +565,41 @@ export default function GameCanvas() {
       if (newState === 'chase') {
         const dx = playerPos.x - m.pos.x;
         const dy = playerPos.y - m.pos.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+        const dist = Math.hypot(dx, dy);
         if (dist > 1.2) {
-          const step = MONSTER_CHASE_SPEED * dt;
-          const nx = m.pos.x + (dx / dist) * step;
-          const ny = m.pos.y + (dy / dist) * step;
-          const tileAtNew = dungeonTiles[Math.round(ny)]?.[Math.round(nx)];
-          if (tileAtNew !== undefined && isDungeonWalkable(tileAtNew)) {
-            newPos = { x: nx, y: ny };
+          const step = MONSTER_CHASE_SPEED * speedScale * dtScale;
+          const nextPos = {
+            x: m.pos.x + (dx / dist) * step,
+            y: m.pos.y + (dy / dist) * step,
+          };
+          const moved = tryMove(m.pos, nextPos);
+          if (moved.x !== m.pos.x || moved.y !== m.pos.y) {
+            newPos = moved;
             changed = true;
           }
         }
       } else {
         if (shouldUpdate) {
-          if (!newPatrolTarget || (Math.abs(m.pos.x - newPatrolTarget.x) < 0.3 && Math.abs(m.pos.y - newPatrolTarget.y) < 0.3)) {
+          if (!newPatrolTarget || Math.hypot(m.pos.x - newPatrolTarget.x, m.pos.y - newPatrolTarget.y) < 0.35) {
             newPatrolTarget = getRandomPatrolTarget(m.pos, Math.random);
           }
         }
+
         if (newPatrolTarget) {
           const dx = newPatrolTarget.x - m.pos.x;
           const dy = newPatrolTarget.y - m.pos.y;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          if (dist > 0.2) {
-            const step = MONSTER_SPEED * dt;
-            const nx = m.pos.x + (dx / dist) * step;
-            const ny = m.pos.y + (dy / dist) * step;
-            const tileAtNew = dungeonTiles[Math.round(ny)]?.[Math.round(nx)];
-            if (tileAtNew !== undefined && isDungeonWalkable(tileAtNew)) {
-              newPos = { x: nx, y: ny };
+          const dist = Math.hypot(dx, dy);
+          if (dist > 0.15) {
+            const step = MONSTER_SPEED * speedScale * dtScale;
+            const nextPos = {
+              x: m.pos.x + (dx / dist) * step,
+              y: m.pos.y + (dy / dist) * step,
+            };
+            const moved = tryMove(m.pos, nextPos);
+            if (moved.x !== m.pos.x || moved.y !== m.pos.y) {
+              newPos = moved;
               changed = true;
-            } else {
+            } else if (shouldUpdate) {
               newPatrolTarget = null;
             }
           }
@@ -588,20 +610,12 @@ export default function GameCanvas() {
         changed = true;
         return { ...m, pos: newPos, state: newState, patrolTarget: newPatrolTarget };
       }
+
       return m;
     });
-    
-    if (changed) {
-      monstersRef.current = newMonsters;
-    }
 
-    // Throttle React snapshot updates to ~4fps for UI (HUD, minimap)
-    if (time - monsterSnapshotTimer.current > 250) {
-      monsterSnapshotTimer.current = time;
-      setMonstersSnapshot([...monstersRef.current]);
-      setPlayerPosState({ ...playerRef.current });
-    }
-  }, [combat.active, startCombat]);
+    if (changed) monstersRef.current = nextMonsters;
+  }, [combat.active, isMobile, startCombat]);
 
   // Game loop
   useEffect(() => {
