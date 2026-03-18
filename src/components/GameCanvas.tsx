@@ -27,6 +27,8 @@ const MONSTER_CHASE_SPEED = 0.02;
 const MONSTER_UPDATE_INTERVAL = 500; // ms between AI updates
 
 export default function GameCanvas() {
+  const isMobile = useIsMobile();
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animRef = useRef<number>(0);
   const charImgRef = useRef<HTMLImageElement | null>(null);
@@ -56,10 +58,8 @@ export default function GameCanvas() {
   // Mika position
   const mikaPos = useRef<Position>(findFarthestPoint());
 
-  // Combat state - monsters live in ref only, render snapshot updated at lower frequency
+  // Combat state (monster AI stays in refs to avoid re-render storms)
   const monstersRef = useRef<Monster[]>(generateDungeonMonsters());
-  const [monstersSnapshot, setMonstersSnapshot] = useState<Monster[]>(() => monstersRef.current);
-  const monsterSnapshotTimer = useRef(0);
   const [playerStats, setPlayerStats] = useState<PlayerCombatStats>(createInitialPlayerStats);
   const playerStatsRef = useRef<PlayerCombatStats>(createInitialPlayerStats());
   const [combat, setCombat] = useState<CombatState>({
@@ -67,6 +67,7 @@ export default function GameCanvas() {
   });
   const defendingRef = useRef(false);
   const lastMonsterUpdateRef = useRef(0);
+  const combatStartPendingRef = useRef(false);
   const [playerPosState, setPlayerPosState] = useState<Position>({ x: 15, y: 15 });
   const playerPosUpdateTimer = useRef(0);
 
