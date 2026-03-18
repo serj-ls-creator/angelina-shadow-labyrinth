@@ -54,9 +54,10 @@ export default function GameCanvas() {
   // Mika position
   const mikaPos = useRef<Position>(findFarthestPoint());
 
-  // Combat state
-  const [monsters, setMonsters] = useState<Monster[]>(() => generateDungeonMonsters());
-  const monstersRef = useRef<Monster[]>([]);
+  // Combat state - monsters live in ref only, render snapshot updated at lower frequency
+  const monstersRef = useRef<Monster[]>(generateDungeonMonsters());
+  const [monstersSnapshot, setMonstersSnapshot] = useState<Monster[]>(() => monstersRef.current);
+  const monsterSnapshotTimer = useRef(0);
   const [playerStats, setPlayerStats] = useState<PlayerCombatStats>(createInitialPlayerStats);
   const playerStatsRef = useRef<PlayerCombatStats>(createInitialPlayerStats());
   const [combat, setCombat] = useState<CombatState>({
@@ -64,9 +65,10 @@ export default function GameCanvas() {
   });
   const defendingRef = useRef(false);
   const lastMonsterUpdateRef = useRef(0);
+  const [playerPosState, setPlayerPosState] = useState<Position>({ x: 15, y: 15 });
+  const playerPosUpdateTimer = useRef(0);
 
-  // Keep refs in sync
-  useEffect(() => { monstersRef.current = monsters; }, [monsters]);
+  // Keep playerStats ref in sync
   useEffect(() => { playerStatsRef.current = playerStats; }, [playerStats]);
 
   useEffect(() => {
