@@ -4,10 +4,13 @@ interface GameHUDProps {
   gameTime: string;
   questCount: number;
   onQuestLogToggle: () => void;
+  onInventoryToggle: () => void;
   playerStats?: PlayerCombatStats;
+  coins: number;
+  currentMap: string;
 }
 
-export default function GameHUD({ gameTime, questCount, onQuestLogToggle, playerStats }: GameHUDProps) {
+export default function GameHUD({ gameTime, questCount, onQuestLogToggle, onInventoryToggle, playerStats, coins, currentMap }: GameHUDProps) {
   return (
     <>
       {/* Top bar */}
@@ -20,26 +23,41 @@ export default function GameHUD({ gameTime, questCount, onQuestLogToggle, player
           <p className="text-muted-foreground text-[10px] font-mono">{gameTime}</p>
         </div>
 
-        {/* Quest button */}
-        <button
-          onClick={onQuestLogToggle}
-          className="glass-panel px-3 py-2 pointer-events-auto neon-glow
-                     active:scale-[0.96] transition-transform duration-200"
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-sm">📋</span>
-            <span className="font-display text-xs text-foreground">Завдання</span>
-            {questCount > 1 && (
-              <span className="bg-primary text-primary-foreground text-[10px] font-mono 
-                             rounded-full w-4 h-4 flex items-center justify-center">
-                {questCount}
-              </span>
-            )}
+        {/* Right buttons */}
+        <div className="flex gap-2 pointer-events-auto">
+          {/* Coins */}
+          <div className="glass-panel px-3 py-2">
+            <span className="text-xs font-mono text-yellow-400">🪙 {coins}</span>
           </div>
-        </button>
+
+          {/* Inventory */}
+          <button
+            onClick={onInventoryToggle}
+            className="glass-panel px-3 py-2 active:scale-[0.96] transition-transform duration-200"
+          >
+            <span className="text-sm">🎒</span>
+          </button>
+
+          {/* Quest button */}
+          <button
+            onClick={onQuestLogToggle}
+            className="glass-panel px-3 py-2 neon-glow active:scale-[0.96] transition-transform duration-200"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-sm">📋</span>
+              <span className="font-display text-xs text-foreground">Завдання</span>
+              {questCount > 1 && (
+                <span className="bg-primary text-primary-foreground text-[10px] font-mono 
+                               rounded-full w-4 h-4 flex items-center justify-center">
+                  {questCount}
+                </span>
+              )}
+            </div>
+          </button>
+        </div>
       </div>
 
-      {/* Player stats bar (dungeon only) */}
+      {/* Player HP bar - always visible */}
       {playerStats && (
         <div className="fixed top-14 left-3 z-40 glass-panel px-3 py-2 space-y-1">
           <div className="flex items-center gap-2">
@@ -48,12 +66,16 @@ export default function GameHUD({ gameTime, questCount, onQuestLogToggle, player
               ❤️ {playerStats.hp}/{playerStats.maxHp}
             </span>
           </div>
-          <div className="w-24 bg-muted/50 rounded-full h-1.5">
+          <div className="w-28 bg-muted/50 rounded-full h-2.5 overflow-hidden">
             <div
-              className="h-1.5 rounded-full transition-all duration-300"
+              className="h-2.5 rounded-full transition-all duration-300"
               style={{
-                width: `${(playerStats.hp / playerStats.maxHp) * 100}%`,
-                backgroundColor: playerStats.hp / playerStats.maxHp > 0.5 ? 'hsl(150, 60%, 40%)' : 'hsl(0, 70%, 50%)',
+                width: `${Math.min(100, (playerStats.hp / playerStats.maxHp) * 100)}%`,
+                background: playerStats.hp / playerStats.maxHp > 0.5
+                  ? 'linear-gradient(90deg, hsl(150, 60%, 35%), hsl(150, 60%, 45%))'
+                  : playerStats.hp / playerStats.maxHp > 0.25
+                    ? 'linear-gradient(90deg, hsl(40, 80%, 45%), hsl(40, 80%, 55%))'
+                    : 'linear-gradient(90deg, hsl(0, 70%, 40%), hsl(0, 70%, 55%))',
               }}
             />
           </div>
