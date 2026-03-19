@@ -720,19 +720,17 @@ export default function GameCanvas() {
     const map = currentMapRef.current;
 
     const coinsArr = map === 'city' ? cityCoinsRef.current : dungeonCoinsRef.current;
-    let collected = false;
+    let newlyCollected = 0;
     for (const coin of coinsArr) {
       if (coin.collected) continue;
       const dist = Math.hypot(coin.pos.x - px, coin.pos.y - py);
       if (dist < pickupDist) {
         coin.collected = true;
-        collected = true;
+        newlyCollected++;
       }
     }
-    if (collected) {
-      const count = coinsArr.filter(c => c.collected).length;
-      // Count newly collected
-      setCoins(prev => prev + 1);
+    if (newlyCollected > 0) {
+      setCoins(prev => prev + newlyCollected);
     }
   }, [hasItem]);
 
