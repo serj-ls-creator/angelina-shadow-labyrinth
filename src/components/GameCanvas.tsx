@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { Position, MapId } from '../game/types';
 import { findPath } from '../game/pathfinding';
-import { renderMap, renderCharacter, renderNPCs, renderPathPreview, renderMonsters, renderMika, toIso, fromIso } from '../game/renderer';
+import { renderMap, renderCharacter, renderNPCs, renderPathPreview, renderMonsters, renderMika, renderCoins, toIso, fromIso } from '../game/renderer';
 import { npcs as npcData } from '../game/dialogueData';
 import { NPC, DialogueNode, QuestEntry } from '../game/types';
 import { dialogues } from '../game/dialogueData';
@@ -9,6 +9,7 @@ import { getCurrentMapData, findPortalNearby } from '../game/mapSystem';
 import { Monster, CombatState, PlayerCombatStats, generateDungeonMonsters, createInitialPlayerStats, performAttack, getXpForLevel, hasLineOfSight, getRandomPatrolTarget, findFarthestPoint } from '../game/combatSystem';
 import { isDungeonWalkable, dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT } from '../game/dungeonMapData';
 import { useIsMobile } from '../hooks/use-mobile';
+import { InventoryItem, Coin, generateCityCoins, generateDungeonCoins, generateMonsterLoot, getItemDef, ActiveEffect } from '../game/inventorySystem';
 import characterSrc from '@/assets/character-kuromi-girl.png';
 import mikaSrc from '@/assets/character-mika.png';
 import DialogueBox from './DialogueBox';
@@ -16,15 +17,18 @@ import CombatUI from './CombatUI';
 import GameHUD from './GameHUD';
 import QuestLog from './QuestLog';
 import MiniMap from './MiniMap';
+import InventoryUI from './InventoryUI';
+import ShopUI from './ShopUI';
 
 const PLAYER_SPEED = 0.06;
 const NPC_INTERACT_DIST = 2.5;
 const CAMERA_LERP = 0.08;
 const MONSTER_INTERACT_DIST = 2;
-// tiles per frame @60fps (scaled by dt / 16.67)
 const MONSTER_SPEED = 0.012;
 const MONSTER_CHASE_SPEED = 0.02;
-const MONSTER_UPDATE_INTERVAL = 500; // ms between AI updates
+const MONSTER_UPDATE_INTERVAL = 500;
+const COIN_PICKUP_DIST = 1.5;
+const COIN_MAGNET_DIST = 3.5;
 
 export default function GameCanvas() {
   const isMobile = useIsMobile();
@@ -55,10 +59,24 @@ export default function GameCanvas() {
   const [transitioning, setTransitioning] = useState(false);
   const [gameWon, setGameWon] = useState(false);
 
+  // Inventory & coins
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [coins, setCoins] = useState(0);
+  const [showInventory, setShowInventory] = useState(false);
+  const [showShop, setShowShop] = useState(false);
+  const [activeEffects, setActiveEffects] = useState<ActiveEffect[]>([]);
+  const [lootMessage, setLootMessage] = useState<string | null>(null);
+
+  // Coin data in refs for performance
+  const cityCoinsRef = useRef<Coin[]>(generateCityCoins());
+  const dungeonCoinsRef = useRef<Coin[]>(
+    generateDungeonCoins(dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, isDungeonWalkable)
+  );
+
   // Mika position
   const mikaPos = useRef<Position>(findFarthestPoint());
 
-  // Combat state (monster AI stays in refs to avoid re-render storms)
+  // Combat state
   const monstersRef = useRef<Monster[]>(generateDungeonMonsters());
   const [playerStats, setPlayerStats] = useState<PlayerCombatStats>(createInitialPlayerStats);
   const playerStatsRef = useRef<PlayerCombatStats>(createInitialPlayerStats());
@@ -70,6 +88,15 @@ export default function GameCanvas() {
   const combatStartPendingRef = useRef(false);
   const [playerPosState, setPlayerPosState] = useState<Position>({ x: 15, y: 15 });
   const playerPosUpdateTimer = useRef(0);
+
+  // Helper: check if player has a passive item
+  const hasItem = useCallback((itemId: string) => {
+    return inventory.some(i => i.itemId === itemId);
+  }, [inventory]);
+
+  const hasActiveEffect = useCallback((effectType: string) => {
+    return activeEffects.some(e => e.type === effectType && e.endsAt > Date.now());
+  }, [activeEffects]);
 
   // Keep playerStats ref in sync
   useEffect(() => { playerStatsRef.current = playerStats; }, [playerStats]);
@@ -87,6 +114,140 @@ export default function GameCanvas() {
     const { sx, sy } = toIso(playerRef.current.x, playerRef.current.y);
     cameraRef.current = { x: sx, y: sy };
   }, []);
+
+  // Add item to inventory
+  const addToInventory = useCallback((itemId: string, qty = 1) => {
+    setInventory(prev => {
+      const existing = prev.find(i => i.itemId === itemId);
+      if (existing) {
+        return prev.map(i => i.itemId === itemId ? { ...i, quantity: i.quantity + qty } : i);
+      }
+      return [...prev, { itemId, quantity: qty }];
+    });
+  }, []);
+
+  // Use item from inventory
+  const useItem = useCallback((itemId: string) => {
+    const def = getItemDef(itemId);
+    if (!def) return;
+
+    const effect = def.effect;
+
+    switch (effect.type) {
+      case 'heal':
+        setPlayerStats(ps => ({ ...ps, hp: Math.min(ps.maxHp, ps.hp + effect.amount) }));
+        break;
+      case 'fullHeal':
+        setPlayerStats(ps => ({ ...ps, hp: ps.maxHp }));
+        break;
+      case 'overheal':
+        setPlayerStats(ps => ({ ...ps, hp: ps.hp + effect.amount }));
+        break;
+      case 'invisibility':
+        setActiveEffects(prev => [...prev, { type: 'invisibility', endsAt: Date.now() + effect.duration }]);
+        break;
+      case 'flashFreeze':
+        setActiveEffects(prev => [...prev, { type: 'flashFreeze', endsAt: Date.now() + effect.duration }]);
+        break;
+      case 'timeStop':
+        setActiveEffects(prev => [...prev, { type: 'timeStop', endsAt: Date.now() + effect.duration }]);
+        break;
+      case 'slowEnemies':
+        setActiveEffects(prev => [...prev, { type: 'slowEnemies', endsAt: Date.now() + effect.duration }]);
+        break;
+      case 'teleportRandom': {
+        // Find random safe spot in current map
+        const mapData = getCurrentMapData(currentMapRef.current);
+        const candidates: Position[] = [];
+        for (let y = 0; y < mapData.height; y++) {
+          for (let x = 0; x < mapData.width; x++) {
+            if (mapData.isWalkable(mapData.tiles[y]?.[x])) candidates.push({ x, y });
+          }
+        }
+        if (candidates.length > 0) {
+          const p = candidates[Math.floor(Math.random() * candidates.length)];
+          playerRef.current = { ...p };
+          pathRef.current = [];
+          pathIndexRef.current = 0;
+          targetRef.current = null;
+        }
+        break;
+      }
+      case 'bombAoe': {
+        // Kill nearby monsters
+        const px = playerRef.current.x;
+        const py = playerRef.current.y;
+        monstersRef.current = monstersRef.current.map(m => {
+          if (!m.isAlive) return m;
+          if (Math.hypot(m.pos.x - px, m.pos.y - py) < 3) {
+            return { ...m, isAlive: false };
+          }
+          return m;
+        });
+        break;
+      }
+      case 'knockback': {
+        const px = playerRef.current.x;
+        const py = playerRef.current.y;
+        monstersRef.current = monstersRef.current.map(m => {
+          if (!m.isAlive) return m;
+          const dist = Math.hypot(m.pos.x - px, m.pos.y - py);
+          if (dist < 4 && dist > 0) {
+            const dx = (m.pos.x - px) / dist;
+            const dy = (m.pos.y - py) / dist;
+            const newX = m.pos.x + dx * 4;
+            const newY = m.pos.y + dy * 4;
+            if (isDungeonWalkable(dungeonTiles[Math.floor(newY)]?.[Math.floor(newX)])) {
+              return { ...m, pos: { x: newX, y: newY } };
+            }
+          }
+          return m;
+        });
+        break;
+      }
+      case 'speedBoost':
+      case 'waterWalk':
+      case 'damageReduction':
+      case 'coinMagnet':
+      case 'discoLight':
+      case 'glitterTrail':
+      case 'luckyDrop':
+      case 'shinyDrop':
+      case 'compass':
+      case 'meleeWeapon':
+      case 'projectile':
+      case 'freezeProjectile':
+      case 'hologram':
+      case 'chickenTransform':
+        // Passive items - no action on use, just keep in inventory
+        return; // Don't consume
+    }
+
+    // Consume item if consumable
+    if (def.consumable) {
+      setInventory(prev => {
+        return prev.map(i => {
+          if (i.itemId !== itemId) return i;
+          return { ...i, quantity: i.quantity - 1 };
+        }).filter(i => i.quantity > 0);
+      });
+    }
+    // Non-consumable non-reusable (perfume)
+    if (!def.consumable && effect.type === 'invisibility' && !(effect as any).reusable) {
+      // already handled above
+    }
+  }, []);
+
+  // Buy from shop
+  const handleBuy = useCallback((itemId: string) => {
+    const def = getItemDef(itemId);
+    if (!def) return;
+    setCoins(prev => {
+      if (prev < def.price) return prev;
+      addToInventory(itemId);
+      return prev - def.price;
+    });
+  }, [addToInventory]);
 
   // Restart game
   const handleRestart = useCallback(() => {
@@ -108,6 +269,11 @@ export default function GameCanvas() {
     ]);
     setNpcs(npcData.map(n => ({ ...n })));
     setCombat({ active: false, monster: null, playerTurn: true, log: [], result: 'none' });
+    setInventory([]);
+    setCoins(0);
+    setActiveEffects([]);
+    cityCoinsRef.current = generateCityCoins();
+    dungeonCoinsRef.current = generateDungeonCoins(dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, isDungeonWalkable);
     const { sx, sy } = toIso(15, 15);
     cameraRef.current = { x: sx, y: sy };
   }, []);
@@ -154,10 +320,25 @@ export default function GameCanvas() {
       const log = [...prev.log, `⚔️ Ти ${critical ? 'КРИТ! ' : ''}завдаєш ${damage} шкоди!`];
 
       if (newMonsterHp <= 0) {
-        // Mark monster as dead in ref
         const mId = prev.monster!.id;
         monstersRef.current = monstersRef.current.map(m => m.id === mId ? { ...m, isAlive: false } : m);
         const xpGain = prev.monster.xpReward;
+        
+        // Generate loot
+        const loot = generateMonsterLoot(
+          inventory.some(i => i.itemId === 'luckycoin'),
+          inventory.some(i => i.itemId === 'shinycloak')
+        );
+        setCoins(c => c + loot.coins);
+        let lootMsg = `+${loot.coins} 🪙`;
+        if (loot.itemId) {
+          addToInventory(loot.itemId);
+          const itemDef = getItemDef(loot.itemId);
+          lootMsg += ` + ${itemDef?.icon} ${itemDef?.name}`;
+        }
+        setLootMessage(lootMsg);
+        setTimeout(() => setLootMessage(null), 2500);
+
         setPlayerStats(ps => {
           const newXp = ps.xp + xpGain;
           const needed = getXpForLevel(ps.level);
@@ -170,7 +351,7 @@ export default function GameCanvas() {
           }
           return { ...ps, xp: newXp };
         });
-        return { ...prev, monster: { ...prev.monster, hp: 0 }, log: [...log, `🎉 ${prev.monster.name} переможений!`], result: 'win' };
+        return { ...prev, monster: { ...prev.monster, hp: 0 }, log: [...log, `🎉 ${prev.monster.name} переможений! ${lootMsg}`], result: 'win' };
       }
 
       setTimeout(() => {
@@ -178,7 +359,11 @@ export default function GameCanvas() {
           if (!c.monster || c.result !== 'none') return c;
           const def = defendingRef.current ? { defense: playerStatsRef.current.defense * 2 } : playerStatsRef.current;
           const { damage: mDmg, critical: mCrit } = performAttack(c.monster, def, combatRand);
-          const actualDmg = defendingRef.current ? Math.max(1, Math.floor(mDmg / 2)) : mDmg;
+          let actualDmg = defendingRef.current ? Math.max(1, Math.floor(mDmg / 2)) : mDmg;
+          // Bear hat passive: -2 damage
+          if (inventory.some(i => i.itemId === 'bearhat')) {
+            actualDmg = Math.max(1, actualDmg - 2);
+          }
           defendingRef.current = false;
 
           setPlayerStats(ps => {
@@ -206,7 +391,7 @@ export default function GameCanvas() {
 
       return { ...prev, monster: { ...prev.monster, hp: newMonsterHp }, log, playerTurn: false };
     });
-  }, [combatRand]);
+  }, [combatRand, inventory, addToInventory]);
 
   const handleCombatDefend = useCallback(() => {
     setCombat(prev => {
@@ -219,7 +404,10 @@ export default function GameCanvas() {
           if (!c.monster || c.result !== 'none') return c;
           const def = { defense: playerStatsRef.current.defense * 2 };
           const { damage: mDmg } = performAttack(c.monster, def, combatRand);
-          const actualDmg = Math.max(1, Math.floor(mDmg / 2));
+          let actualDmg = Math.max(1, Math.floor(mDmg / 2));
+          if (inventory.some(i => i.itemId === 'bearhat')) {
+            actualDmg = Math.max(1, actualDmg - 2);
+          }
           defendingRef.current = false;
 
           setPlayerStats(ps => {
@@ -241,7 +429,7 @@ export default function GameCanvas() {
 
       return { ...prev, log, playerTurn: false };
     });
-  }, [combatRand]);
+  }, [combatRand, inventory]);
 
   const handleCombatFlee = useCallback(() => {
     setCombat(prev => {
@@ -253,20 +441,24 @@ export default function GameCanvas() {
         setCombat(c => {
           if (!c.monster || c.result !== 'none') return c;
           const { damage: mDmg } = performAttack(c.monster, playerStatsRef.current, combatRand);
+          let actualDmg = mDmg;
+          if (inventory.some(i => i.itemId === 'bearhat')) {
+            actualDmg = Math.max(1, actualDmg - 2);
+          }
           setPlayerStats(ps => {
-            const newHp = ps.hp - mDmg;
+            const newHp = ps.hp - actualDmg;
             if (newHp <= 0) {
               setCombat(cc => ({ ...cc, log: [...cc.log, `💀 Не вдалося втекти...`], result: 'lose' }));
               return { ...ps, hp: 0 };
             }
             return { ...ps, hp: newHp };
           });
-          return { ...c, log: [...c.log, `❌ Не вдалося втекти! ${c.monster.name} завдає ${mDmg} шкоди!`], playerTurn: true };
+          return { ...c, log: [...c.log, `❌ Не вдалося втекти! ${c.monster.name} завдає ${actualDmg} шкоди!`], playerTurn: true };
         });
       }, 600);
       return { ...prev, log: [...prev.log, '❌ Втеча не вдалася!'], playerTurn: false };
     });
-  }, [combatRand]);
+  }, [combatRand, inventory]);
 
   const handleCombatEnd = useCallback(() => {
     if (combat.result === 'lose') {
@@ -299,7 +491,7 @@ export default function GameCanvas() {
     if (now - lastClickRef.current < 120) return;
     lastClickRef.current = now;
 
-    if (currentDialogue || transitioning || combat.active) return;
+    if (currentDialogue || transitioning || combat.active || showShop || showInventory) return;
 
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -462,11 +654,18 @@ export default function GameCanvas() {
         targetRef.current = walkPath[walkPath.length - 1];
       }
     }
-  }, [currentDialogue, npcs, transitioning, switchMap, startCombat, combat.active, gameWon, startDialogue]);
+  }, [currentDialogue, npcs, transitioning, switchMap, startCombat, combat.active, gameWon, startDialogue, showShop, showInventory]);
 
   const handleDialogueResponse = useCallback((nextId: string) => {
     const next = dialogues[nextId];
     if (next) {
+      // Check for shop open trigger
+      if (next.text === 'OPEN_SHOP') {
+        setCurrentDialogue(null);
+        setActiveNpc(null);
+        setShowShop(true);
+        return;
+      }
       if (next.questUpdate) {
         if (next.questUpdate === 'ПЕРЕМОГА') {
           setGameWon(true);
@@ -490,6 +689,12 @@ export default function GameCanvas() {
 
   const handleDialogueEnd = useCallback(() => {
     if (currentDialogue?.questUpdate) {
+      if (currentDialogue.text === 'OPEN_SHOP') {
+        setCurrentDialogue(null);
+        setActiveNpc(null);
+        setShowShop(true);
+        return;
+      }
       if (currentDialogue.questUpdate === 'ПЕРЕМОГА') {
         setGameWon(true);
         setQuestLog(prev => prev.map(q => q.id === 'main' ? { ...q, completed: true } : q));
@@ -507,9 +712,41 @@ export default function GameCanvas() {
     setActiveNpc(null);
   }, [currentDialogue, gameTime]);
 
+  // Coin pickup logic (runs in game loop via ref)
+  const checkCoinPickup = useCallback(() => {
+    const px = playerRef.current.x;
+    const py = playerRef.current.y;
+    const pickupDist = hasItem('magnet') ? COIN_MAGNET_DIST : COIN_PICKUP_DIST;
+    const map = currentMapRef.current;
+
+    const coinsArr = map === 'city' ? cityCoinsRef.current : dungeonCoinsRef.current;
+    let collected = false;
+    for (const coin of coinsArr) {
+      if (coin.collected) continue;
+      const dist = Math.hypot(coin.pos.x - px, coin.pos.y - py);
+      if (dist < pickupDist) {
+        coin.collected = true;
+        collected = true;
+      }
+    }
+    if (collected) {
+      const count = coinsArr.filter(c => c.collected).length;
+      // Count newly collected
+      setCoins(prev => prev + 1);
+    }
+  }, [hasItem]);
+
   // Monster AI update
   const updateMonsterAI = useCallback((time: number, dt: number) => {
     if (currentMapRef.current !== 'dungeon' || combat.active) return;
+
+    // Check if monsters are frozen
+    const isFrozen = activeEffects.some(e =>
+      (e.type === 'flashFreeze' || e.type === 'timeStop') && e.endsAt > Date.now()
+    );
+    if (isFrozen) return;
+
+    const isInvisible = activeEffects.some(e => e.type === 'invisibility' && e.endsAt > Date.now());
 
     const playerPos = playerRef.current;
     const shouldUpdate = time - lastMonsterUpdateRef.current > MONSTER_UPDATE_INTERVAL;
@@ -517,6 +754,10 @@ export default function GameCanvas() {
 
     const dtScale = Math.min(dt, 33) / 16.667;
     const speedScale = isMobile ? 0.68 : 1;
+
+    // Check slow effect
+    const isSlowed = activeEffects.some(e => e.type === 'slowEnemies' && e.endsAt > Date.now());
+    const slowMult = isSlowed ? 0.5 : 1;
 
     const isWalkableAt = (x: number, y: number) => {
       const tx = Math.floor(x);
@@ -538,9 +779,9 @@ export default function GameCanvas() {
     const nextMonsters = prevMonsters.map((m) => {
       if (!m.isAlive) return m;
 
-      let canSeePlayer = m.state === 'chase';
+      let canSeePlayer = m.state === 'chase' && !isInvisible;
       if (shouldUpdate) {
-        canSeePlayer = hasLineOfSight(m.pos, playerPos, 8);
+        canSeePlayer = !isInvisible && hasLineOfSight(m.pos, playerPos, 8);
       }
 
       let newState = m.state;
@@ -548,7 +789,7 @@ export default function GameCanvas() {
       else if (shouldUpdate && m.state === 'chase') newState = 'patrol';
 
       const distToPlayer = Math.hypot(m.pos.x - playerPos.x, m.pos.y - playerPos.y);
-      if (distToPlayer < 1.1) {
+      if (distToPlayer < 1.1 && !isInvisible) {
         if (!combatStartPendingRef.current) {
           combatStartPendingRef.current = true;
           const encounterMonster = m;
@@ -568,7 +809,7 @@ export default function GameCanvas() {
         const dy = playerPos.y - m.pos.y;
         const dist = Math.hypot(dx, dy);
         if (dist > 1.2) {
-          const step = MONSTER_CHASE_SPEED * speedScale * dtScale;
+          const step = MONSTER_CHASE_SPEED * speedScale * dtScale * slowMult;
           const nextPos = {
             x: m.pos.x + (dx / dist) * step,
             y: m.pos.y + (dy / dist) * step,
@@ -591,7 +832,7 @@ export default function GameCanvas() {
           const dy = newPatrolTarget.y - m.pos.y;
           const dist = Math.hypot(dx, dy);
           if (dist > 0.15) {
-            const step = MONSTER_SPEED * speedScale * dtScale;
+            const step = MONSTER_SPEED * speedScale * dtScale * slowMult;
             const nextPos = {
               x: m.pos.x + (dx / dist) * step,
               y: m.pos.y + (dy / dist) * step,
@@ -616,7 +857,7 @@ export default function GameCanvas() {
     });
 
     if (changed) monstersRef.current = nextMonsters;
-  }, [combat.active, isMobile, startCombat]);
+  }, [combat.active, isMobile, startCombat, activeEffects]);
 
   // Game loop
   useEffect(() => {
@@ -634,6 +875,7 @@ export default function GameCanvas() {
     window.addEventListener('resize', resize);
 
     let lastTime = -1;
+    let coinCheckTimer = 0;
 
     const loop = (time: number) => {
       if (lastTime < 0) lastTime = time;
@@ -665,6 +907,13 @@ export default function GameCanvas() {
         }
       }
 
+      // Coin pickup check (throttled)
+      coinCheckTimer += dt;
+      if (coinCheckTimer > 200) {
+        coinCheckTimer = 0;
+        checkCoinPickup();
+      }
+
       if (time - playerPosUpdateTimer.current > 100) {
         playerPosUpdateTimer.current = time;
         setPlayerPosState({ ...playerRef.current });
@@ -689,13 +938,17 @@ export default function GameCanvas() {
 
       const zoom = zoomRef.current;
       renderMap(ctx, cameraRef.current, canvas.width, canvas.height, zoom, mapId);
+
+      // Render coins
+      const currentCoins = mapId === 'city' ? cityCoinsRef.current : dungeonCoinsRef.current;
+      renderCoins(ctx, currentCoins, cameraRef.current, canvas.width, canvas.height, zoom, time);
+
       renderPathPreview(ctx, pathRef.current.slice(pathIndexRef.current), cameraRef.current, canvas.width, canvas.height, zoom, time);
       
       if (mapId === 'city') {
         renderNPCs(ctx, npcs, cameraRef.current, canvas.width, canvas.height, zoom, time);
       }
       
-      // Render dungeon entities
       if (mapId === 'dungeon') {
         const aliveMonsters = monstersRef.current.filter(m => m.isAlive);
         renderMonsters(ctx, aliveMonsters, cameraRef.current, canvas.width, canvas.height, zoom, time);
@@ -713,7 +966,7 @@ export default function GameCanvas() {
       cancelAnimationFrame(animRef.current);
       window.removeEventListener('resize', resize);
     };
-  }, [npcs, currentMap, updateMonsterAI]);
+  }, [npcs, currentMap, updateMonsterAI, checkCoinPickup]);
 
   // Pinch zoom
   useEffect(() => {
@@ -782,11 +1035,21 @@ export default function GameCanvas() {
         </div>
       )}
 
+      {/* Loot message */}
+      {lootMessage && (
+        <div className="fixed top-1/3 left-1/2 -translate-x-1/2 z-50 glass-panel px-4 py-2 neon-glow animate-float">
+          <p className="text-foreground text-sm font-bold font-display">{lootMessage}</p>
+        </div>
+      )}
+
       <GameHUD
         gameTime={gameTime}
         questCount={questLog.length}
         onQuestLogToggle={() => setShowQuestLog(prev => !prev)}
+        onInventoryToggle={() => setShowInventory(prev => !prev)}
         playerStats={currentMap === 'dungeon' ? playerStats : undefined}
+        coins={coins}
+        currentMap={currentMap}
       />
 
       {/* Map indicator */}
@@ -820,6 +1083,23 @@ export default function GameCanvas() {
         <QuestLog
           entries={questLog}
           onClose={() => setShowQuestLog(false)}
+        />
+      )}
+
+      {showInventory && (
+        <InventoryUI
+          items={inventory}
+          coins={coins}
+          onUse={useItem}
+          onClose={() => setShowInventory(false)}
+        />
+      )}
+
+      {showShop && (
+        <ShopUI
+          coins={coins}
+          onBuy={handleBuy}
+          onClose={() => setShowShop(false)}
         />
       )}
 
