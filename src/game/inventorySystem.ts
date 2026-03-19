@@ -130,10 +130,10 @@ export function generateDungeonCoins(
 ): Coin[] {
   
   const candidates: Position[] = [];
-  for (let y = 0; y < DUNGEON_HEIGHT; y++) {
-    for (let x = 0; x < DUNGEON_WIDTH; x++) {
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
       if (x < 4 && y < 4) continue;
-      if (isDungeonWalkable(dungeonTiles[y]?.[x])) {
+      if (walkableCheck(dungeonTilesData[y]?.[x])) {
         candidates.push({ x, y });
       }
     }
