@@ -122,10 +122,12 @@ export function generateCityCoins(): Coin[] {
   ];
 }
 
-export function generateDungeonCoins(): Coin[] {
-  // Use seeded random to spread 60 coins across dungeon walkable tiles
-  const { isDungeonWalkable } = require('./dungeonMapData');
-  const { dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT } = require('./dungeonMapData');
+export function generateDungeonCoins(
+  dungeonTilesData: number[][],
+  width: number,
+  height: number,
+  walkableCheck: (tile: number | undefined) => boolean
+): Coin[] {
   
   const candidates: Position[] = [];
   for (let y = 0; y < DUNGEON_HEIGHT; y++) {
