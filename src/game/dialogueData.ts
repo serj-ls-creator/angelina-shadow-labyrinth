@@ -74,8 +74,14 @@ export const dialogues: Record<string, DialogueNode> = {
     text: 'Ласкаво просимо до мого магазину! У нас сьогодні знижка на... зачекай, ти ж дитина. Що тобі потрібно?',
     responses: [
       { text: 'Ви бачили дівчинку з рожевим бантиком? Це моя подруга Міку!', nextId: 'shop_miku' },
+      { text: '🛒 Хочу подивитись товари!', nextId: 'shop_open' },
       { text: 'А що у вас є цікавого?', nextId: 'shop_items' },
     ],
+  },
+  'shop_open': {
+    id: 'shop_open',
+    speaker: 'Продавець Ханс',
+    text: 'OPEN_SHOP',
   },
   'shop_miku': {
     id: 'shop_miku',
@@ -84,6 +90,7 @@ export const dialogues: Record<string, DialogueNode> = {
     questUpdate: 'Міку купила ліхтарик і карту підземель в магазині Ханса. Куди вона зібралась?!',
     responses: [
       { text: 'Карту підземель?! А де ці підземелля?', nextId: 'shop_dungeons' },
+      { text: '🛒 Хочу подивитись товари!', nextId: 'shop_open' },
     ],
   },
   'shop_items': {
@@ -92,6 +99,7 @@ export const dialogues: Record<string, DialogueNode> = {
     text: 'Для такої стильної леді в капюшоні Куромі... може, ліхтарик? Дуже корисна річ вночі!',
     responses: [
       { text: 'Ні, дякую. Я шукаю свою подружку!', nextId: 'shop_miku' },
+      { text: '🛒 Покажіть усе!', nextId: 'shop_open' },
     ],
   },
   'shop_dungeons': {
@@ -99,6 +107,9 @@ export const dialogues: Record<string, DialogueNode> = {
     speaker: 'Продавець Ханс',
     text: 'Під старою червоною будівлею біля каналу є вхід. Але туди НЕ МОЖНА ходити дітям! Хоча... твоя подруга, здається, не знала цього правила.',
     questUpdate: 'Під червоною будівлею біля каналу є вхід в підземелля. Міку могла піти туди!',
+    responses: [
+      { text: '🛒 Тоді мені знадобиться спорядження!', nextId: 'shop_open' },
+    ],
   },
 
   // Mika victory dialogue

@@ -550,3 +550,39 @@ export function renderMonsters(
 
   ctx.restore();
 }
+
+export function renderCoins(
+  ctx: CanvasRenderingContext2D,
+  coins: { pos: Position; collected: boolean }[],
+  camera: Position,
+  canvasW: number,
+  canvasH: number,
+  zoom: number,
+  time: number
+) {
+  ctx.save();
+  ctx.translate(canvasW / 2, canvasH / 3);
+  ctx.scale(zoom, zoom);
+  ctx.translate(-camera.x, -camera.y);
+
+  for (const c of coins) {
+    if (c.collected) continue;
+    const { sx, sy } = toIso(c.pos.x, c.pos.y);
+    const floatY = Math.sin(time * 0.005 + c.pos.x * 2 + c.pos.y) * 3;
+    const pulse = 0.7 + Math.sin(time * 0.006 + c.pos.x) * 0.3;
+
+    // Glow
+    ctx.fillStyle = `rgba(255, 215, 0, ${pulse * 0.25})`;
+    ctx.beginPath();
+    ctx.ellipse(sx, sy - 6 + floatY, 10, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Coin
+    ctx.font = `${12 + pulse * 3}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🪙', sx, sy - 8 + floatY);
+  }
+
+  ctx.restore();
+}
