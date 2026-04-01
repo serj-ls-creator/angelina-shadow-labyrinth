@@ -161,17 +161,20 @@ export function hasLineOfSight(from: Position, to: Position, maxDist: number = 8
 }
 
 // Pick a random walkable neighbor for patrol
-export function getRandomPatrolTarget(pos: Position, rand: () => number): Position | null {
+export function getRandomPatrolTarget(pos: Position, rand: () => number, tiles?: number[][], width?: number, height?: number, walkable?: (t: number) => boolean): Position | null {
   const dirs = [
     { x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 },
   ];
-  // Try a few random steps
+  const mapTiles = tiles || dungeonTiles;
+  const mapW = width || DUNGEON_WIDTH;
+  const mapH = height || DUNGEON_HEIGHT;
+  const isWalk = walkable || isDungeonWalkable;
   const shuffled = dirs.sort(() => rand() - 0.5);
   for (const d of shuffled) {
     const nx = Math.round(pos.x) + d.x;
     const ny = Math.round(pos.y) + d.y;
-    if (nx >= 0 && nx < DUNGEON_WIDTH && ny >= 0 && ny < DUNGEON_HEIGHT) {
-      if (isDungeonWalkable(dungeonTiles[ny]?.[nx])) {
+    if (nx >= 0 && nx < mapW && ny >= 0 && ny < mapH) {
+      if (isWalk(mapTiles[ny]?.[nx])) {
         return { x: nx, y: ny };
       }
     }
