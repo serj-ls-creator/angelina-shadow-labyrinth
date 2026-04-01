@@ -76,9 +76,10 @@ export function renderMap(
 }
 
 function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile: number, tileX: number, tileY: number, mapId: MapId) {
-  const isDungeon = mapId === 'dungeon';
-  const color = isDungeon ? getDungeonTileColor(tile) : getTileColor(tile);
-  const height = isDungeon ? getDungeonBuildingHeight(tile) : getBuildingHeight(tile, tileX, tileY);
+  const isDungeon = mapId === 'dungeon' || mapId === 'blueDungeon';
+  const isBlue = mapId === 'blueDungeon';
+  const color = isBlue ? getBlueTileColor(tile) : isDungeon ? getDungeonTileColor(tile) : getTileColor(tile);
+  const height = isBlue ? getBlueBuildingHeight(tile) : isDungeon ? getDungeonBuildingHeight(tile) : getBuildingHeight(tile, tileX, tileY);
 
   ctx.beginPath();
   ctx.moveTo(sx, sy - HALF_H);
