@@ -1103,7 +1103,7 @@ export default function GameCanvas() {
         mapTiles={mapData.tiles}
         mapWidth={mapData.width}
         mapHeight={mapData.height}
-        isDungeon={currentMap === 'dungeon'}
+        isDungeon={currentMap === 'dungeon' || currentMap === 'blueDungeon'}
       />
 
       {/* Start button under minimap */}
