@@ -55,30 +55,38 @@ function seededRand(seed: number): () => number {
 }
 
 export function generateDungeonMonsters(): Monster[] {
+  return generateMonstersForMap(dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, isDungeonWalkable, 77777, 'monster');
+}
+
+export function generateBlueMonsters(): Monster[] {
+  return generateMonstersForMap(blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, isBlueWalkable, 55555, 'bmonster');
+}
+
+function generateMonstersForMap(
+  tiles: number[][], width: number, height: number,
+  walkable: (tile: number) => boolean, seed: number, prefix: string
+): Monster[] {
   const monsters: Monster[] = [];
-  const rand = seededRand(77777);
+  const rand = seededRand(seed);
   const types = Object.keys(MONSTER_TEMPLATES);
   
-  // Collect ALL walkable floor tiles (skip portal area)
   const candidates: Position[] = [];
-  for (let y = 0; y < DUNGEON_HEIGHT; y++) {
-    for (let x = 0; x < DUNGEON_WIDTH; x++) {
-      // Skip near portal (top-left)
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
       if (x < 5 && y < 5) continue;
-      const tile = dungeonTiles[y]?.[x];
-      if (isDungeonWalkable(tile)) {
+      if (x > width - 6 && y > height - 6) continue;
+      const tile = tiles[y]?.[x];
+      if (walkable(tile)) {
         candidates.push({ x, y });
       }
     }
   }
   
-  // Shuffle candidates
   for (let i = candidates.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
     [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
   }
   
-  // Pick 30 spread across the map by spacing them out
   const spacing = Math.floor(candidates.length / 30);
   for (let i = 0; i < 30 && i * spacing < candidates.length; i++) {
     const pos = candidates[i * spacing];
@@ -86,7 +94,7 @@ export function generateDungeonMonsters(): Monster[] {
     const template = MONSTER_TEMPLATES[typeKey];
     
     monsters.push({
-      id: `monster_${i}`,
+      id: `${prefix}_${i}`,
       ...template,
       pos: { ...pos },
       isAlive: true,
