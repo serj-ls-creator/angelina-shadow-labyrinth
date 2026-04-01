@@ -1060,7 +1060,7 @@ export default function GameCanvas() {
       {gameWon && (
         <div className="fixed top-1/4 left-1/2 -translate-x-1/2 z-50 glass-panel px-6 py-4 neon-glow text-center space-y-2">
           <h2 className="font-display text-2xl text-primary font-bold">🎉 ПЕРЕМОГА! 🎉</h2>
-          <p className="text-foreground text-sm">Ти знайшла Міку! Подружки знову разом! 💕</p>
+          <p className="text-foreground text-sm">Ти знайшла Міку та її бантик! Подружки знову разом! 💕🎀</p>
           <button
             onClick={handleRestart}
             className="mt-2 px-4 py-2 rounded-md bg-primary/20 hover:bg-primary/30 border border-primary/30 text-primary text-xs font-display transition-all active:scale-95"
