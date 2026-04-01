@@ -287,6 +287,10 @@ function drawDungeonWindows(ctx: CanvasRenderingContext2D, sx: number, sy: numbe
     [TileType.DUNGEON_BUILDING_PURPLE]: '#ce93d8',
     [TileType.DUNGEON_BUILDING_BROWN]: '#ffab91',
     [TileType.DUNGEON_BUILDING_ORANGE]: '#ffcc80',
+    [TileType.BLUE_BUILDING_YELLOW]: '#fff176',
+    [TileType.BLUE_BUILDING_ORANGE]: '#ffb74d',
+    [TileType.BLUE_BUILDING_GREEN]: '#81c784',
+    [TileType.BLUE_BUILDING_PURPLE]: '#ce93d8',
   };
   const litColor = glowColors[tile] || '#ffd54f';
   const darkColor = 'rgba(10,5,15,0.8)';
