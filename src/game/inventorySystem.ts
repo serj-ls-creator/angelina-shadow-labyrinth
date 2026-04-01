@@ -110,7 +110,7 @@ export interface Coin {
   id: string;
   pos: Position;
   collected: boolean;
-  map: 'city' | 'dungeon';
+  map: 'city' | 'dungeon' | 'blueDungeon';
 }
 
 export function generateCityCoins(): Coin[] {
