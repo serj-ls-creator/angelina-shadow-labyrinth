@@ -190,7 +190,8 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
       drawWindows(ctx, sx, sy, height, tile, tileX, tileY);
     }
 
-    if (isDungeon && (tile === TileType.DUNGEON_BUILDING_PURPLE || tile === TileType.DUNGEON_BUILDING_BROWN || tile === TileType.DUNGEON_BUILDING_ORANGE)) {
+    if (isDungeon && (tile === TileType.DUNGEON_BUILDING_PURPLE || tile === TileType.DUNGEON_BUILDING_BROWN || tile === TileType.DUNGEON_BUILDING_ORANGE ||
+        tile === TileType.BLUE_BUILDING_YELLOW || tile === TileType.BLUE_BUILDING_ORANGE || tile === TileType.BLUE_BUILDING_GREEN || tile === TileType.BLUE_BUILDING_PURPLE)) {
       drawDungeonWindows(ctx, sx, sy, height, tile, tileX, tileY);
     }
 
