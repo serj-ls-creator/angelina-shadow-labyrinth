@@ -24,6 +24,9 @@ function getMapData(mapId: MapId) {
   if (mapId === 'dungeon') {
     return { tiles: dungeonTiles, width: DUNGEON_WIDTH, height: DUNGEON_HEIGHT };
   }
+  if (mapId === 'blueDungeon') {
+    return { tiles: blueDungeonTiles, width: BLUE_WIDTH, height: BLUE_HEIGHT };
+  }
   return { tiles: mapTiles, width: MAP_WIDTH, height: MAP_HEIGHT };
 }
 
