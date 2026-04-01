@@ -128,10 +128,12 @@ export function performAttack(
 }
 
 // Line of sight check using Bresenham
-export function hasLineOfSight(from: Position, to: Position, maxDist: number = 8): boolean {
+export function hasLineOfSight(from: Position, to: Position, maxDist: number = 8, mapTiles?: number[][]): boolean {
   const dx = Math.abs(to.x - from.x);
   const dy = Math.abs(to.y - from.y);
   if (dx > maxDist || dy > maxDist) return false;
+  
+  const tiles = mapTiles || dungeonTiles;
   
   let x = Math.round(from.x);
   let y = Math.round(from.y);
@@ -144,11 +146,12 @@ export function hasLineOfSight(from: Position, to: Position, maxDist: number = 8
   
   while (true) {
     if (x === x1 && y === y1) return true;
-    const tile = dungeonTiles[y]?.[x];
+    const tile = tiles[y]?.[x];
     if (tile === undefined) return false;
-    // Walls and buildings block LOS
     if (tile === TileType.DUNGEON_WALL || tile === TileType.DUNGEON_BUILDING_PURPLE ||
-        tile === TileType.DUNGEON_BUILDING_BROWN || tile === TileType.DUNGEON_BUILDING_ORANGE) {
+        tile === TileType.DUNGEON_BUILDING_BROWN || tile === TileType.DUNGEON_BUILDING_ORANGE ||
+        tile === TileType.BLUE_BUILDING_YELLOW || tile === TileType.BLUE_BUILDING_ORANGE ||
+        tile === TileType.BLUE_BUILDING_GREEN || tile === TileType.BLUE_BUILDING_PURPLE) {
       return false;
     }
     const e2 = 2 * err;
