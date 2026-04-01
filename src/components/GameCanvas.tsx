@@ -1050,8 +1050,8 @@ export default function GameCanvas() {
       {/* Transition overlay */}
       {transitioning && (
         <div className="absolute inset-0 bg-black z-50 transition-opacity duration-500 flex items-center justify-center">
-          <p className="text-purple-400 text-xl font-bold animate-pulse">
-            {currentMap === 'city' ? '⚔️ Вхід до підземелля...' : '🏙️ Повернення до міста...'}
+          <p className="text-primary text-xl font-bold animate-pulse">
+            {currentMap === 'city' ? '⚔️ Вхід до підземелля...' : currentMap === 'blueDungeon' ? '🔵 Синє підземелля...' : '🏙️ Повернення до міста...'}
           </p>
         </div>
       )}
