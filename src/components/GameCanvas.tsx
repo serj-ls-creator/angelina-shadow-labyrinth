@@ -1082,7 +1082,7 @@ export default function GameCanvas() {
         questCount={questLog.length}
         onQuestLogToggle={() => setShowQuestLog(prev => !prev)}
         onInventoryToggle={() => setShowInventory(prev => !prev)}
-        playerStats={currentMap === 'dungeon' ? playerStats : undefined}
+        playerStats={(currentMap === 'dungeon' || currentMap === 'blueDungeon') ? playerStats : undefined}
         coins={coins}
         currentMap={currentMap}
       />
