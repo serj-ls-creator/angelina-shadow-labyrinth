@@ -761,34 +761,38 @@ export default function GameCanvas() {
     }
   }, [hasItem, hasBow]);
 
-  // Monster AI update
+  // Monster AI update - works for both dungeons
   const updateMonsterAI = useCallback((time: number, dt: number) => {
-    if (currentMapRef.current !== 'dungeon' || combat.active) return;
+    const curMap = currentMapRef.current;
+    if (curMap !== 'dungeon' && curMap !== 'blueDungeon') return;
+    if (combat.active) return;
 
-    // Check if monsters are frozen
     const isFrozen = activeEffects.some(e =>
       (e.type === 'flashFreeze' || e.type === 'timeStop') && e.endsAt > Date.now()
     );
     if (isFrozen) return;
 
     const isInvisible = activeEffects.some(e => e.type === 'invisibility' && e.endsAt > Date.now());
-
     const playerPos = playerRef.current;
     const shouldUpdate = time - lastMonsterUpdateRef.current > MONSTER_UPDATE_INTERVAL;
     if (shouldUpdate) lastMonsterUpdateRef.current = time;
 
     const dtScale = Math.min(dt, 33) / 16.667;
     const speedScale = isMobile ? 0.68 : 1;
-
-    // Check slow effect
     const isSlowed = activeEffects.some(e => e.type === 'slowEnemies' && e.endsAt > Date.now());
     const slowMult = isSlowed ? 0.5 : 1;
 
+    const isBlue = curMap === 'blueDungeon';
+    const mapTilesArr = isBlue ? blueDungeonTiles : dungeonTiles;
+    const walkCheck = isBlue ? isBlueWalkable : isDungeonWalkable;
+    const mWidth = isBlue ? BLUE_WIDTH : DUNGEON_WIDTH;
+    const mHeight = isBlue ? BLUE_HEIGHT : DUNGEON_HEIGHT;
+    const currentMonstersRef = isBlue ? blueMonstersRef : monstersRef;
+
     const isWalkableAt = (x: number, y: number) => {
-      const tx = Math.floor(x);
-      const ty = Math.floor(y);
-      const tile = dungeonTiles[ty]?.[tx];
-      return tile !== undefined && isDungeonWalkable(tile);
+      const tx = Math.floor(x), ty = Math.floor(y);
+      const tile = mapTilesArr[ty]?.[tx];
+      return tile !== undefined && walkCheck(tile);
     };
 
     const tryMove = (from: Position, to: Position): Position => {
@@ -798,7 +802,7 @@ export default function GameCanvas() {
       return from;
     };
 
-    const prevMonsters = monstersRef.current;
+    const prevMonsters = currentMonstersRef.current;
     let changed = false;
 
     const nextMonsters = prevMonsters.map((m) => {
@@ -806,7 +810,7 @@ export default function GameCanvas() {
 
       let canSeePlayer = m.state === 'chase' && !isInvisible;
       if (shouldUpdate) {
-        canSeePlayer = !isInvisible && hasLineOfSight(m.pos, playerPos, 8);
+        canSeePlayer = !isInvisible && hasLineOfSight(m.pos, playerPos, 8, mapTilesArr);
       }
 
       let newState = m.state;
@@ -848,7 +852,7 @@ export default function GameCanvas() {
       } else {
         if (shouldUpdate) {
           if (!newPatrolTarget || Math.hypot(m.pos.x - newPatrolTarget.x, m.pos.y - newPatrolTarget.y) < 0.35) {
-            newPatrolTarget = getRandomPatrolTarget(m.pos, Math.random);
+            newPatrolTarget = getRandomPatrolTarget(m.pos, Math.random, mapTilesArr, mWidth, mHeight, walkCheck);
           }
         }
 
@@ -881,7 +885,7 @@ export default function GameCanvas() {
       return m;
     });
 
-    if (changed) monstersRef.current = nextMonsters;
+    if (changed) currentMonstersRef.current = nextMonsters;
   }, [combat.active, isMobile, startCombat, activeEffects]);
 
   // Game loop
