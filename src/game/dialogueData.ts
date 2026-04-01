@@ -112,7 +112,7 @@ export const dialogues: Record<string, DialogueNode> = {
     ],
   },
 
-  // Mika victory dialogue
+  // Mika dialogue - asks about the bow
   'mika_start': {
     id: 'mika_start',
     speaker: 'Міка',
@@ -124,15 +124,38 @@ export const dialogues: Record<string, DialogueNode> = {
   'mika_safe': {
     id: 'mika_safe',
     speaker: 'Міка',
-    text: 'Так, я в порядку! Просто було дуже страшно... Тут всюди монстри! Але ти прийшла за мною! Ти найкраща подруга на світі! 💕',
+    text: 'Так, я в порядку! Але... я загубила свій улюблений бантик десь у синьому підземеллі! 🎀 Ти його знайшла?',
     responses: [
-      { text: 'Ходімо додому разом! Більше не тікай одна!', nextId: 'mika_end' },
+      { text: 'Так, я знайшла твій бантик! Ось він! 🎀', nextId: 'mika_bow_yes', condition: 'has_bow' },
+      { text: 'Ні, я ще не знайшла... Де він може бути?', nextId: 'mika_bow_no' },
     ],
+  },
+  'mika_bow_yes': {
+    id: 'mika_bow_yes',
+    speaker: 'Міка',
+    text: '🎀 Мій бантик! Дякую, дякую, дякую! Ти найкраща подруга на світі! 💖 Ходімо додому разом!',
+    responses: [
+      { text: 'Ходімо! Більше не тікай одна! 💕', nextId: 'mika_end' },
+    ],
+  },
+  'mika_bow_no': {
+    id: 'mika_bow_no',
+    speaker: 'Міка',
+    text: 'Я загубила його в синьому підземеллі... Воно знаходиться під червоним будинком біля бабусі Рози. Бантик десь у центрі лабіринту! Будь ласка, знайди його! 🥺',
+    questUpdate: 'Міка просить знайти її бантик у синьому підземеллі — він у центрі лабіринту!',
+    responses: [
+      { text: 'Я обов\'язково знайду його! Чекай тут!', nextId: 'mika_bow_no_end' },
+    ],
+  },
+  'mika_bow_no_end': {
+    id: 'mika_bow_no_end',
+    speaker: 'Міка',
+    text: 'Дякую! Я буду чекати тут! Будь обережна! 💕',
   },
   'mika_end': {
     id: 'mika_end',
     speaker: 'Міка',
-    text: '🎉 Так! Ходімо! Я більше ніколи не піду в підземелля одна! Дякую, що знайшла мене! 💖',
+    text: '🎉 Так! Ходімо! Я більше ніколи не піду в підземелля одна! Дякую, що знайшла мене і мій бантик! 💖🎀',
     questUpdate: 'ПЕРЕМОГА',
   },
 };
