@@ -726,14 +726,14 @@ export default function GameCanvas() {
     setActiveNpc(null);
   }, [currentDialogue, gameTime]);
 
-  // Coin pickup logic (runs in game loop via ref)
+  // Coin pickup & bow pickup logic
   const checkCoinPickup = useCallback(() => {
     const px = playerRef.current.x;
     const py = playerRef.current.y;
     const pickupDist = hasItem('magnet') ? COIN_MAGNET_DIST : COIN_PICKUP_DIST;
     const map = currentMapRef.current;
 
-    const coinsArr = map === 'city' ? cityCoinsRef.current : dungeonCoinsRef.current;
+    const coinsArr = map === 'city' ? cityCoinsRef.current : map === 'blueDungeon' ? blueCoinsRef.current : dungeonCoinsRef.current;
     let newlyCollected = 0;
     for (const coin of coinsArr) {
       if (coin.collected) continue;
@@ -746,7 +746,20 @@ export default function GameCanvas() {
     if (newlyCollected > 0) {
       setCoins(prev => prev + newlyCollected);
     }
-  }, [hasItem]);
+
+    // Check bow pickup in blue dungeon
+    if (map === 'blueDungeon' && !hasBow) {
+      const bowPos = getBlueBowPos();
+      const dist = Math.hypot(bowPos.x - px, bowPos.y - py);
+      if (dist < 1.5) {
+        setHasBow(true);
+        setLootMessage('🎀 Знайдено бантик Міки!');
+        setTimeout(() => setLootMessage(null), 3000);
+        // Replace bow tile with floor
+        blueDungeonTiles[bowPos.y][bowPos.x] = TileType.DUNGEON_FLOOR;
+      }
+    }
+  }, [hasItem, hasBow]);
 
   // Monster AI update
   const updateMonsterAI = useCallback((time: number, dt: number) => {
