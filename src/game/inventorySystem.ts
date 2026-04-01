@@ -110,7 +110,7 @@ export interface Coin {
   id: string;
   pos: Position;
   collected: boolean;
-  map: 'city' | 'dungeon';
+  map: 'city' | 'dungeon' | 'blueDungeon';
 }
 
 export function generateCityCoins(): Coin[] {
@@ -126,7 +126,9 @@ export function generateDungeonCoins(
   dungeonTilesData: number[][],
   width: number,
   height: number,
-  walkableCheck: (tile: number | undefined) => boolean
+  walkableCheck: (tile: number | undefined) => boolean,
+  mapName: 'dungeon' | 'blueDungeon' = 'dungeon',
+  seed: number = 54321
 ): Coin[] {
   
   const candidates: Position[] = [];
@@ -139,11 +141,10 @@ export function generateDungeonCoins(
     }
   }
   
-  // Seeded shuffle
-  let seed = 54321;
+  let s = seed;
   const rand = () => {
-    seed = (seed * 16807 + 0) % 2147483647;
-    return (seed - 1) / 2147483646;
+    s = (s * 16807 + 0) % 2147483647;
+    return (s - 1) / 2147483646;
   };
   
   for (let i = candidates.length - 1; i > 0; i--) {
@@ -155,10 +156,10 @@ export function generateDungeonCoins(
   const coins: Coin[] = [];
   for (let i = 0; i < 60 && i * spacing < candidates.length; i++) {
     coins.push({
-      id: `dun_${i}`,
+      id: `${mapName}_${i}`,
       pos: candidates[i * spacing],
       collected: false,
-      map: 'dungeon',
+      map: mapName,
     });
   }
   

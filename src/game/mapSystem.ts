@@ -1,14 +1,18 @@
 import { MapId, Portal, Position, TileType } from './types';
 import { mapTiles, MAP_WIDTH, MAP_HEIGHT, isWalkable } from './mapData';
-import { dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, isDungeonWalkable, getDungeonSpawnPos } from './dungeonMapData';
+import { dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, isDungeonWalkable, getDungeonSpawnPos, getDungeonPortalPos } from './dungeonMapData';
+import { blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, isBlueWalkable, getBlueSpawnPos, getBluePortalPos } from './blueDungeonMapData';
 
 // Portal: red building near green zone at (23, 6) -> dungeon
-// The red building tile is at row 6, col 23-24 (X,X in mapData)
-// Player clicks nearby walkable tile to enter
-export const CITY_PORTAL_TILE = { x: 23, y: 5 }; // walkable tile next to red building
-export const CITY_PORTAL_ENTRY = { x: 23, y: 6 }; // the red building itself
+export const CITY_PORTAL_TILE = { x: 23, y: 5 };
+export const CITY_PORTAL_ENTRY = { x: 23, y: 6 };
+
+// Portal: red building near old lady at (8, 4) -> blue dungeon
+export const BLUE_PORTAL_TILE = { x: 8, y: 3 };
+export const BLUE_PORTAL_ENTRY = { x: 8, y: 4 };
 
 export const portals: Portal[] = [
+  // City -> Dungeon (red building near green zone)
   {
     fromMap: 'city',
     toMap: 'dungeon',
@@ -16,19 +20,33 @@ export const portals: Portal[] = [
     toPos: getDungeonSpawnPos(),
     tilePos: CITY_PORTAL_ENTRY,
   },
+  // City -> Blue Dungeon (red building near old lady)
+  {
+    fromMap: 'city',
+    toMap: 'blueDungeon',
+    fromPos: BLUE_PORTAL_TILE,
+    toPos: getBlueSpawnPos(),
+    tilePos: BLUE_PORTAL_ENTRY,
+  },
 ];
 
-// Dynamically add the reverse portal
-const dungeonPortalPos = getDungeonSpawnPos();
-// Find the portal tile in dungeon
-import { getDungeonPortalPos } from './dungeonMapData';
+// Reverse portals
 const dp = getDungeonPortalPos();
 portals.push({
   fromMap: 'dungeon',
   toMap: 'city',
   fromPos: dp,
-  toPos: { x: CITY_PORTAL_TILE.x, y: CITY_PORTAL_TILE.y + 1 }, // spawn just below portal in city
+  toPos: { x: CITY_PORTAL_TILE.x, y: CITY_PORTAL_TILE.y + 1 },
   tilePos: dp,
+});
+
+const bp = getBluePortalPos();
+portals.push({
+  fromMap: 'blueDungeon',
+  toMap: 'city',
+  fromPos: bp,
+  toPos: { x: BLUE_PORTAL_TILE.x, y: BLUE_PORTAL_TILE.y + 1 },
+  tilePos: bp,
 });
 
 export function getCurrentMapData(mapId: MapId) {
@@ -38,6 +56,14 @@ export function getCurrentMapData(mapId: MapId) {
       width: DUNGEON_WIDTH,
       height: DUNGEON_HEIGHT,
       isWalkable: isDungeonWalkable,
+    };
+  }
+  if (mapId === 'blueDungeon') {
+    return {
+      tiles: blueDungeonTiles,
+      width: BLUE_WIDTH,
+      height: BLUE_HEIGHT,
+      isWalkable: isBlueWalkable,
     };
   }
   return {

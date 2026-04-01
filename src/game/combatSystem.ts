@@ -1,5 +1,6 @@
 import { Position, TileType } from './types';
 import { dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, isDungeonWalkable } from './dungeonMapData';
+import { blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, isBlueWalkable } from './blueDungeonMapData';
 
 export interface Monster {
   id: string;
@@ -54,30 +55,38 @@ function seededRand(seed: number): () => number {
 }
 
 export function generateDungeonMonsters(): Monster[] {
+  return generateMonstersForMap(dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, isDungeonWalkable, 77777, 'monster');
+}
+
+export function generateBlueMonsters(): Monster[] {
+  return generateMonstersForMap(blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, isBlueWalkable, 55555, 'bmonster');
+}
+
+function generateMonstersForMap(
+  tiles: number[][], width: number, height: number,
+  walkable: (tile: number) => boolean, seed: number, prefix: string
+): Monster[] {
   const monsters: Monster[] = [];
-  const rand = seededRand(77777);
+  const rand = seededRand(seed);
   const types = Object.keys(MONSTER_TEMPLATES);
   
-  // Collect ALL walkable floor tiles (skip portal area)
   const candidates: Position[] = [];
-  for (let y = 0; y < DUNGEON_HEIGHT; y++) {
-    for (let x = 0; x < DUNGEON_WIDTH; x++) {
-      // Skip near portal (top-left)
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
       if (x < 5 && y < 5) continue;
-      const tile = dungeonTiles[y]?.[x];
-      if (isDungeonWalkable(tile)) {
+      if (x > width - 6 && y > height - 6) continue;
+      const tile = tiles[y]?.[x];
+      if (walkable(tile)) {
         candidates.push({ x, y });
       }
     }
   }
   
-  // Shuffle candidates
   for (let i = candidates.length - 1; i > 0; i--) {
     const j = Math.floor(rand() * (i + 1));
     [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
   }
   
-  // Pick 30 spread across the map by spacing them out
   const spacing = Math.floor(candidates.length / 30);
   for (let i = 0; i < 30 && i * spacing < candidates.length; i++) {
     const pos = candidates[i * spacing];
@@ -85,7 +94,7 @@ export function generateDungeonMonsters(): Monster[] {
     const template = MONSTER_TEMPLATES[typeKey];
     
     monsters.push({
-      id: `monster_${i}`,
+      id: `${prefix}_${i}`,
       ...template,
       pos: { ...pos },
       isAlive: true,
@@ -119,10 +128,12 @@ export function performAttack(
 }
 
 // Line of sight check using Bresenham
-export function hasLineOfSight(from: Position, to: Position, maxDist: number = 8): boolean {
+export function hasLineOfSight(from: Position, to: Position, maxDist: number = 8, mapTiles?: number[][]): boolean {
   const dx = Math.abs(to.x - from.x);
   const dy = Math.abs(to.y - from.y);
   if (dx > maxDist || dy > maxDist) return false;
+  
+  const tiles = mapTiles || dungeonTiles;
   
   let x = Math.round(from.x);
   let y = Math.round(from.y);
@@ -135,11 +146,12 @@ export function hasLineOfSight(from: Position, to: Position, maxDist: number = 8
   
   while (true) {
     if (x === x1 && y === y1) return true;
-    const tile = dungeonTiles[y]?.[x];
+    const tile = tiles[y]?.[x];
     if (tile === undefined) return false;
-    // Walls and buildings block LOS
     if (tile === TileType.DUNGEON_WALL || tile === TileType.DUNGEON_BUILDING_PURPLE ||
-        tile === TileType.DUNGEON_BUILDING_BROWN || tile === TileType.DUNGEON_BUILDING_ORANGE) {
+        tile === TileType.DUNGEON_BUILDING_BROWN || tile === TileType.DUNGEON_BUILDING_ORANGE ||
+        tile === TileType.BLUE_BUILDING_YELLOW || tile === TileType.BLUE_BUILDING_ORANGE ||
+        tile === TileType.BLUE_BUILDING_GREEN || tile === TileType.BLUE_BUILDING_PURPLE) {
       return false;
     }
     const e2 = 2 * err;
@@ -149,17 +161,20 @@ export function hasLineOfSight(from: Position, to: Position, maxDist: number = 8
 }
 
 // Pick a random walkable neighbor for patrol
-export function getRandomPatrolTarget(pos: Position, rand: () => number): Position | null {
+export function getRandomPatrolTarget(pos: Position, rand: () => number, tiles?: number[][], width?: number, height?: number, walkable?: (t: number) => boolean): Position | null {
   const dirs = [
     { x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 },
   ];
-  // Try a few random steps
+  const mapTiles = tiles || dungeonTiles;
+  const mapW = width || DUNGEON_WIDTH;
+  const mapH = height || DUNGEON_HEIGHT;
+  const isWalk = walkable || isDungeonWalkable;
   const shuffled = dirs.sort(() => rand() - 0.5);
   for (const d of shuffled) {
     const nx = Math.round(pos.x) + d.x;
     const ny = Math.round(pos.y) + d.y;
-    if (nx >= 0 && nx < DUNGEON_WIDTH && ny >= 0 && ny < DUNGEON_HEIGHT) {
-      if (isDungeonWalkable(dungeonTiles[ny]?.[nx])) {
+    if (nx >= 0 && nx < mapW && ny >= 0 && ny < mapH) {
+      if (isWalk(mapTiles[ny]?.[nx])) {
         return { x: nx, y: ny };
       }
     }

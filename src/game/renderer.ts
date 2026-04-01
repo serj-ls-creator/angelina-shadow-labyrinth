@@ -1,6 +1,7 @@
 import { Position, TileType, MapId } from './types';
 import { mapTiles, MAP_WIDTH, MAP_HEIGHT, TILE_SIZE, getTileColor, getBuildingHeight } from './mapData';
 import { dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, getDungeonTileColor, getDungeonBuildingHeight } from './dungeonMapData';
+import { blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, getBlueTileColor, getBlueBuildingHeight } from './blueDungeonMapData';
 
 const HALF_W = TILE_SIZE / 2;
 const HALF_H = TILE_SIZE / 4;
@@ -22,6 +23,9 @@ export function fromIso(sx: number, sy: number): { x: number; y: number } {
 function getMapData(mapId: MapId) {
   if (mapId === 'dungeon') {
     return { tiles: dungeonTiles, width: DUNGEON_WIDTH, height: DUNGEON_HEIGHT };
+  }
+  if (mapId === 'blueDungeon') {
+    return { tiles: blueDungeonTiles, width: BLUE_WIDTH, height: BLUE_HEIGHT };
   }
   return { tiles: mapTiles, width: MAP_WIDTH, height: MAP_HEIGHT };
 }
@@ -72,9 +76,10 @@ export function renderMap(
 }
 
 function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile: number, tileX: number, tileY: number, mapId: MapId) {
-  const isDungeon = mapId === 'dungeon';
-  const color = isDungeon ? getDungeonTileColor(tile) : getTileColor(tile);
-  const height = isDungeon ? getDungeonBuildingHeight(tile) : getBuildingHeight(tile, tileX, tileY);
+  const isDungeon = mapId === 'dungeon' || mapId === 'blueDungeon';
+  const isBlue = mapId === 'blueDungeon';
+  const color = isBlue ? getBlueTileColor(tile) : isDungeon ? getDungeonTileColor(tile) : getTileColor(tile);
+  const height = isBlue ? getBlueBuildingHeight(tile) : isDungeon ? getDungeonBuildingHeight(tile) : getBuildingHeight(tile, tileX, tileY);
 
   ctx.beginPath();
   ctx.moveTo(sx, sy - HALF_H);
@@ -185,7 +190,8 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
       drawWindows(ctx, sx, sy, height, tile, tileX, tileY);
     }
 
-    if (isDungeon && (tile === TileType.DUNGEON_BUILDING_PURPLE || tile === TileType.DUNGEON_BUILDING_BROWN || tile === TileType.DUNGEON_BUILDING_ORANGE)) {
+    if (isDungeon && (tile === TileType.DUNGEON_BUILDING_PURPLE || tile === TileType.DUNGEON_BUILDING_BROWN || tile === TileType.DUNGEON_BUILDING_ORANGE ||
+        tile === TileType.BLUE_BUILDING_YELLOW || tile === TileType.BLUE_BUILDING_ORANGE || tile === TileType.BLUE_BUILDING_GREEN || tile === TileType.BLUE_BUILDING_PURPLE)) {
       drawDungeonWindows(ctx, sx, sy, height, tile, tileX, tileY);
     }
 
@@ -209,7 +215,7 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
     }
   }
 
-  if (!isDungeon && tile === TileType.BUILDING_RED && tileX === 23 && tileY === 6) {
+  if (!isDungeon && tile === TileType.BUILDING_RED && ((tileX === 23 && tileY === 6) || (tileX === 8 && tileY === 4) || (tileX === 9 && tileY === 4))) {
     ctx.fillStyle = 'rgba(156,39,176,0.5)';
     ctx.beginPath();
     ctx.ellipse(sx, sy - height / 2, 8, 12, 0, 0, Math.PI * 2);
@@ -218,6 +224,19 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
     ctx.beginPath();
     ctx.ellipse(sx, sy - height / 2, 5, 8, 0, 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  // Bow item rendering
+  if (tile === TileType.BOW_ITEM) {
+    const pulse = 0.7 + Math.sin((tileX + tileY) * 0.1) * 0.3;
+    ctx.fillStyle = `rgba(255, 150, 200, ${pulse * 0.4})`;
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, 16, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.font = '18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🎀', sx, sy - 4);
   }
 }
 
@@ -268,6 +287,10 @@ function drawDungeonWindows(ctx: CanvasRenderingContext2D, sx: number, sy: numbe
     [TileType.DUNGEON_BUILDING_PURPLE]: '#ce93d8',
     [TileType.DUNGEON_BUILDING_BROWN]: '#ffab91',
     [TileType.DUNGEON_BUILDING_ORANGE]: '#ffcc80',
+    [TileType.BLUE_BUILDING_YELLOW]: '#fff176',
+    [TileType.BLUE_BUILDING_ORANGE]: '#ffb74d',
+    [TileType.BLUE_BUILDING_GREEN]: '#81c784',
+    [TileType.BLUE_BUILDING_PURPLE]: '#ce93d8',
   };
   const litColor = glowColors[tile] || '#ffd54f';
   const darkColor = 'rgba(10,5,15,0.8)';
