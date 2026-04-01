@@ -215,7 +215,7 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
     }
   }
 
-  if (!isDungeon && tile === TileType.BUILDING_RED && tileX === 23 && tileY === 6) {
+  if (!isDungeon && tile === TileType.BUILDING_RED && ((tileX === 23 && tileY === 6) || (tileX === 8 && tileY === 4) || (tileX === 9 && tileY === 4))) {
     ctx.fillStyle = 'rgba(156,39,176,0.5)';
     ctx.beginPath();
     ctx.ellipse(sx, sy - height / 2, 8, 12, 0, 0, Math.PI * 2);
@@ -224,6 +224,19 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
     ctx.beginPath();
     ctx.ellipse(sx, sy - height / 2, 5, 8, 0, 0, Math.PI * 2);
     ctx.fill();
+  }
+
+  // Bow item rendering
+  if (tile === TileType.BOW_ITEM) {
+    const pulse = 0.7 + Math.sin((tileX + tileY) * 0.1) * 0.3;
+    ctx.fillStyle = `rgba(255, 150, 200, ${pulse * 0.4})`;
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, 16, 8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.font = '18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🎀', sx, sy - 4);
   }
 }
 
