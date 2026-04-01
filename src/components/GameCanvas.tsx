@@ -72,11 +72,20 @@ export default function GameCanvas() {
   // Coin data in refs for performance
   const cityCoinsRef = useRef<Coin[]>(generateCityCoins());
   const dungeonCoinsRef = useRef<Coin[]>(
-    generateDungeonCoins(dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, isDungeonWalkable)
+    generateDungeonCoins(dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, isDungeonWalkable, 'dungeon', 54321)
+  );
+  const blueCoinsRef = useRef<Coin[]>(
+    generateDungeonCoins(blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, isBlueWalkable, 'blueDungeon', 11111)
   );
 
   // Mika position
   const mikaPos = useRef<Position>(findFarthestPoint());
+
+  // Blue dungeon monsters
+  const blueMonstersRef = useRef<Monster[]>(generateBlueMonsters());
+
+  // Bow collected state
+  const [hasBow, setHasBow] = useState(false);
 
   // Combat state
   const monstersRef = useRef<Monster[]>(generateDungeonMonsters());
