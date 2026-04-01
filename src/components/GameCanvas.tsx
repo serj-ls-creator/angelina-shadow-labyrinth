@@ -1141,15 +1141,25 @@ export default function GameCanvas() {
         />
       )}
 
-      {currentDialogue && (
-        <DialogueBox
-          dialogue={currentDialogue}
-          npcName={activeNpc?.name || ''}
-          npcIcon={activeNpc?.icon || ''}
-          onResponse={handleDialogueResponse}
-          onEnd={handleDialogueEnd}
-        />
-      )}
+      {currentDialogue && (() => {
+        // Filter responses based on conditions
+        const filteredDialogue = {
+          ...currentDialogue,
+          responses: currentDialogue.responses?.filter(r => {
+            if (r.condition === 'has_bow') return hasBow;
+            return true;
+          }),
+        };
+        return (
+          <DialogueBox
+            dialogue={filteredDialogue}
+            npcName={activeNpc?.name || ''}
+            npcIcon={activeNpc?.icon || ''}
+            onResponse={handleDialogueResponse}
+            onEnd={handleDialogueEnd}
+          />
+        );
+      })()}
 
       <CombatUI
         combat={combat}
