@@ -32,9 +32,15 @@ export enum TileType {
   DUNGEON_BUILDING_PURPLE = 19,
   DUNGEON_BUILDING_BROWN = 20,
   DUNGEON_BUILDING_ORANGE = 21,
+  // Blue dungeon buildings
+  BLUE_BUILDING_YELLOW = 22,
+  BLUE_BUILDING_ORANGE = 23,
+  BLUE_BUILDING_GREEN = 24,
+  BLUE_BUILDING_PURPLE = 25,
+  BOW_ITEM = 26,
 }
 
-export type MapId = 'city' | 'dungeon';
+export type MapId = 'city' | 'dungeon' | 'blueDungeon';
 
 export interface Portal {
   fromMap: MapId;
