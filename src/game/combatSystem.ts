@@ -1,5 +1,6 @@
 import { Position, TileType } from './types';
 import { dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, isDungeonWalkable } from './dungeonMapData';
+import { blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, isBlueWalkable } from './blueDungeonMapData';
 
 export interface Monster {
   id: string;
