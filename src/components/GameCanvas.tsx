@@ -388,6 +388,7 @@ export default function GameCanvas() {
             actualDmg = Math.max(1, actualDmg - 2);
           }
           defendingRef.current = false;
+          playPlayerHitSound();
 
           setPlayerStats(ps => {
             const newHp = ps.hp - actualDmg;
