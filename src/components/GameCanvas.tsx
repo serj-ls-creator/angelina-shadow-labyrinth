@@ -110,6 +110,18 @@ export default function GameCanvas() {
     return activeEffects.some(e => e.type === effectType && e.endsAt > Date.now());
   }, [activeEffects]);
 
+  // Memoize filtered dialogue to prevent flickering
+  const filteredDialogue = useMemo(() => {
+    if (!currentDialogue) return null;
+    return {
+      ...currentDialogue,
+      responses: currentDialogue.responses?.filter(r => {
+        if (r.condition === 'has_bow') return hasBow;
+        return true;
+      }),
+    };
+  }, [currentDialogue, hasBow]);
+
   // Keep playerStats ref in sync
   useEffect(() => { playerStatsRef.current = playerStats; }, [playerStats]);
 
