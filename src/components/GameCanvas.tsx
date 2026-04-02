@@ -271,6 +271,7 @@ export default function GameCanvas() {
     setCoins(prev => {
       if (prev < def.price) return prev;
       addToInventory(itemId);
+      playBuySound();
       return prev - def.price;
     });
   }, [addToInventory]);
