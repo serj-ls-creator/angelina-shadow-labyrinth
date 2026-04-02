@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Position, MapId } from '../game/types';
 import { findPath } from '../game/pathfinding';
 import { renderMap, renderCharacter, renderNPCs, renderPathPreview, renderMonsters, renderMika, renderCoins, toIso, fromIso } from '../game/renderer';
@@ -21,6 +21,7 @@ import QuestLog from './QuestLog';
 import MiniMap from './MiniMap';
 import InventoryUI from './InventoryUI';
 import ShopUI from './ShopUI';
+import { playCoinSound, playHitSound, playPlayerHitSound, playVictorySound, playDefeatSound, playPortalSound, playHealSound, playBuySound, playUseItemSound, playCombatStartSound, playBowPickupSound } from '../game/soundSystem';
 
 const PLAYER_SPEED = 0.06;
 const NPC_INTERACT_DIST = 2.5;
