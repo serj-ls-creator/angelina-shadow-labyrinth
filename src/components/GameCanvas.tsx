@@ -337,6 +337,7 @@ export default function GameCanvas() {
       if (!prev.monster || prev.result !== 'none' || !prev.playerTurn) return prev;
       const stats = playerStatsRef.current;
       const { damage, critical } = performAttack(stats, prev.monster, combatRand);
+      playHitSound();
       const newMonsterHp = prev.monster.hp - damage;
       const log = [...prev.log, `⚔️ Ти ${critical ? 'КРИТ! ' : ''}завдаєш ${damage} шкоди!`];
 
