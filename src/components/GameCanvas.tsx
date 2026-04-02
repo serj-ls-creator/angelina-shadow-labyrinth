@@ -393,6 +393,7 @@ export default function GameCanvas() {
           setPlayerStats(ps => {
             const newHp = ps.hp - actualDmg;
             if (newHp <= 0) {
+              playDefeatSound();
               setCombat(cc => ({
                 ...cc,
                 log: [...cc.log, `💀 ${c.monster!.name} завдає ${actualDmg} шкоди! Тебе переможено...`],
