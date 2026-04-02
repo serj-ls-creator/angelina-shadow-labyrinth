@@ -970,6 +970,27 @@ export default function GameCanvas() {
       if (coinCheckTimer > 200) {
         coinCheckTimer = 0;
         checkCoinPickup();
+
+        // Auto-combat: check if any monster is adjacent to player
+        const curMap = currentMapRef.current;
+        if ((curMap === 'dungeon' || curMap === 'blueDungeon') && !combatStartPendingRef.current) {
+          const curMonsters = curMap === 'blueDungeon' ? blueMonstersRef.current : monstersRef.current;
+          const px = playerRef.current.x;
+          const py = playerRef.current.y;
+          for (const m of curMonsters) {
+            if (!m.isAlive) continue;
+            const d = Math.hypot(m.pos.x - px, m.pos.y - py);
+            if (d < 1.3) {
+              combatStartPendingRef.current = true;
+              const encounterMonster = m;
+              setTimeout(() => {
+                combatStartPendingRef.current = false;
+                startCombat(encounterMonster);
+              }, 0);
+              break;
+            }
+          }
+        }
       }
 
       if (time - playerPosUpdateTimer.current > 100) {

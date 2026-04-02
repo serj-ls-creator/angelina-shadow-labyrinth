@@ -37,13 +37,13 @@ export interface CombatState {
   result: 'none' | 'win' | 'lose' | 'fled';
 }
 
-// Stats reduced 3x for easier combat
+// Stats doubled for harder combat (2x stronger)
 const MONSTER_TEMPLATES: Record<string, Omit<Monster, 'id' | 'pos' | 'isAlive' | 'state' | 'patrolTarget' | 'lastMoveTime'>> = {
-  skeleton: { name: 'Скелет', icon: '💀', hp: 8, maxHp: 8, attack: 2, defense: 1, xpReward: 15, type: 'skeleton' },
-  slime: { name: 'Слиз', icon: '🟢', hp: 5, maxHp: 5, attack: 1, defense: 0, xpReward: 8, type: 'slime' },
-  demon: { name: 'Демон', icon: '👹', hp: 14, maxHp: 14, attack: 3, defense: 2, xpReward: 30, type: 'demon' },
-  golem: { name: 'Голем', icon: '🗿', hp: 17, maxHp: 17, attack: 3, defense: 3, xpReward: 25, type: 'golem' },
-  ghost: { name: 'Привид', icon: '👻', hp: 7, maxHp: 7, attack: 2, defense: 1, xpReward: 12, type: 'ghost' },
+  skeleton: { name: 'Скелет', icon: '💀', hp: 16, maxHp: 16, attack: 4, defense: 2, xpReward: 15, type: 'skeleton' },
+  slime: { name: 'Слиз', icon: '🟢', hp: 10, maxHp: 10, attack: 2, defense: 0, xpReward: 8, type: 'slime' },
+  demon: { name: 'Демон', icon: '👹', hp: 28, maxHp: 28, attack: 6, defense: 4, xpReward: 30, type: 'demon' },
+  golem: { name: 'Голем', icon: '🗿', hp: 34, maxHp: 34, attack: 6, defense: 6, xpReward: 25, type: 'golem' },
+  ghost: { name: 'Привид', icon: '👻', hp: 14, maxHp: 14, attack: 4, defense: 2, xpReward: 12, type: 'ghost' },
 };
 
 function seededRand(seed: number): () => number {
