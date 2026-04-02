@@ -147,9 +147,11 @@ export default function GameCanvas() {
 
     switch (effect.type) {
       case 'heal':
+        playHealSound();
         setPlayerStats(ps => ({ ...ps, hp: Math.min(ps.maxHp, ps.hp + effect.amount) }));
         break;
       case 'fullHeal':
+        playHealSound();
         setPlayerStats(ps => ({ ...ps, hp: ps.maxHp }));
         break;
       case 'overheal':
