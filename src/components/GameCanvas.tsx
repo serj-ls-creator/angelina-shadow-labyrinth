@@ -756,6 +756,7 @@ export default function GameCanvas() {
       }
     }
     if (newlyCollected > 0) {
+      playCoinSound();
       setCoins(prev => prev + newlyCollected);
     }
 
