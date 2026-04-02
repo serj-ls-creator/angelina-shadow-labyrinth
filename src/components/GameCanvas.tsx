@@ -373,6 +373,7 @@ export default function GameCanvas() {
           }
           return { ...ps, xp: newXp };
         });
+        playVictorySound();
         return { ...prev, monster: { ...prev.monster, hp: 0 }, log: [...log, `🎉 ${prev.monster.name} переможений! ${lootMsg}`], result: 'win' };
       }
 
