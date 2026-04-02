@@ -1163,7 +1163,7 @@ export default function GameCanvas() {
       />
 
       {/* Start button under minimap */}
-      <div className="fixed z-40" style={{ top: (currentMap === 'dungeon' || currentMap === 'blueDungeon') ? '190px' : '130px', left: '12px' }}>
+      <div className="fixed z-40" style={{ top: (currentMap === 'dungeon' || currentMap === 'blueDungeon') ? '220px' : '170px', left: '12px' }}>
         <button
           onClick={handleRestart}
           className="glass-panel px-3 py-1.5 text-xs font-display font-bold text-primary 
