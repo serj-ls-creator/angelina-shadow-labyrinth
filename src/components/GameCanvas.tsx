@@ -989,7 +989,7 @@ export default function GameCanvas() {
               const encounterMonster = m;
               setTimeout(() => {
                 combatStartPendingRef.current = false;
-                startCombat(encounterMonster);
+                startCombatRef.current(encounterMonster);
               }, 0);
               break;
             }
