@@ -766,6 +766,7 @@ export default function GameCanvas() {
       const dist = Math.hypot(bowPos.x - px, bowPos.y - py);
       if (dist < 1.5) {
         setHasBow(true);
+        playBowPickupSound();
         setLootMessage('🎀 Знайдено бантик Міки!');
         setTimeout(() => setLootMessage(null), 3000);
         // Replace bow tile with floor
