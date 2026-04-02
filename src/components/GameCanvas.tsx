@@ -293,8 +293,13 @@ export default function GameCanvas() {
     cameraRef.current = { x: sx, y: sy };
   }, []);
 
+  // Track which map we're transitioning TO
+  const transitionTargetRef = useRef<MapId>('city');
+
   const switchMap = useCallback((toMap: MapId, spawnPos: Position) => {
+    transitionTargetRef.current = toMap;
     setTransitioning(true);
+    playPortalSound();
     pathRef.current = [];
     pathIndexRef.current = 0;
     targetRef.current = null;
