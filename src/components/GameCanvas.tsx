@@ -98,6 +98,7 @@ export default function GameCanvas() {
   const defendingRef = useRef(false);
   const lastMonsterUpdateRef = useRef(0);
   const combatStartPendingRef = useRef(false);
+  const startCombatRef = useRef<(m: Monster) => void>(() => {});
   const [playerPosState, setPlayerPosState] = useState<Position>({ x: 15, y: 15 });
   const playerPosUpdateTimer = useRef(0);
 
