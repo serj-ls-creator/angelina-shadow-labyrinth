@@ -1079,11 +1079,10 @@ export default function GameCanvas() {
       )}
 
       <GameHUD
-        gameTime={gameTime}
         questCount={questLog.length}
         onQuestLogToggle={() => setShowQuestLog(prev => !prev)}
         onInventoryToggle={() => setShowInventory(prev => !prev)}
-        playerStats={(currentMap === 'dungeon' || currentMap === 'blueDungeon') ? playerStats : undefined}
+        playerStats={playerStats}
         coins={coins}
         currentMap={currentMap}
       />
@@ -1129,14 +1128,17 @@ export default function GameCanvas() {
         <InventoryUI
           items={inventory}
           coins={coins}
+          playerStats={playerStats}
           onUse={useItem}
           onClose={() => setShowInventory(false)}
+          characterImg={charImgRef.current}
         />
       )}
 
       {showShop && (
         <ShopUI
           coins={coins}
+          inventory={inventory}
           onBuy={handleBuy}
           onClose={() => setShowShop(false)}
         />
