@@ -44,7 +44,7 @@ export default function GameHUD({ questCount, onQuestLogToggle, onInventoryToggl
         </button>
       </div>
 
-      {/* Player HP bar - always visible, top left, below minimap area */}
+      {/* Player HP bar - always visible, top left, positioned below minimap+start button */}
       <div className="fixed z-40 glass-panel px-2 py-1.5 space-y-0.5" style={{ top: '8px', left: '8px' }}>
         <div className="flex items-center gap-1.5">
           <span className="text-[9px] text-muted-foreground font-mono">Рів.{playerStats.level}</span>
