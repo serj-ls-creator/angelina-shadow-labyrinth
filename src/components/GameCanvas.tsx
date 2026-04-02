@@ -322,6 +322,7 @@ export default function GameCanvas() {
     pathIndexRef.current = 0;
     targetRef.current = null;
     defendingRef.current = false;
+    playCombatStartSound();
     setCombat({
       active: true,
       monster: { ...monster },
