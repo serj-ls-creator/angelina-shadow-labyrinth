@@ -347,6 +347,9 @@ export default function GameCanvas() {
       result: 'none',
     });
   }, []);
+  
+  // Keep startCombat ref in sync for game loop usage
+  useEffect(() => { startCombatRef.current = startCombat; }, [startCombat]);
 
   const handleCombatAttack = useCallback(() => {
     setCombat(prev => {
