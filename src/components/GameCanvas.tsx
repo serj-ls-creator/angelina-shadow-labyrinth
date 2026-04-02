@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Position, MapId } from '../game/types';
 import { findPath } from '../game/pathfinding';
 import { renderMap, renderCharacter, renderNPCs, renderPathPreview, renderMonsters, renderMika, renderCoins, toIso, fromIso } from '../game/renderer';
@@ -21,6 +21,7 @@ import QuestLog from './QuestLog';
 import MiniMap from './MiniMap';
 import InventoryUI from './InventoryUI';
 import ShopUI from './ShopUI';
+import { playCoinSound, playHitSound, playPlayerHitSound, playVictorySound, playDefeatSound, playPortalSound, playHealSound, playBuySound, playUseItemSound, playCombatStartSound, playBowPickupSound } from '../game/soundSystem';
 
 const PLAYER_SPEED = 0.06;
 const NPC_INTERACT_DIST = 2.5;
@@ -97,6 +98,7 @@ export default function GameCanvas() {
   const defendingRef = useRef(false);
   const lastMonsterUpdateRef = useRef(0);
   const combatStartPendingRef = useRef(false);
+  const startCombatRef = useRef<(m: Monster) => void>(() => {});
   const [playerPosState, setPlayerPosState] = useState<Position>({ x: 15, y: 15 });
   const playerPosUpdateTimer = useRef(0);
 
@@ -108,6 +110,18 @@ export default function GameCanvas() {
   const hasActiveEffect = useCallback((effectType: string) => {
     return activeEffects.some(e => e.type === effectType && e.endsAt > Date.now());
   }, [activeEffects]);
+
+  // Memoize filtered dialogue to prevent flickering
+  const filteredDialogue = useMemo(() => {
+    if (!currentDialogue) return null;
+    return {
+      ...currentDialogue,
+      responses: currentDialogue.responses?.filter(r => {
+        if (r.condition === 'has_bow') return hasBow;
+        return true;
+      }),
+    };
+  }, [currentDialogue, hasBow]);
 
   // Keep playerStats ref in sync
   useEffect(() => { playerStatsRef.current = playerStats; }, [playerStats]);
@@ -146,9 +160,11 @@ export default function GameCanvas() {
 
     switch (effect.type) {
       case 'heal':
+        playHealSound();
         setPlayerStats(ps => ({ ...ps, hp: Math.min(ps.maxHp, ps.hp + effect.amount) }));
         break;
       case 'fullHeal':
+        playHealSound();
         setPlayerStats(ps => ({ ...ps, hp: ps.maxHp }));
         break;
       case 'overheal':
@@ -256,6 +272,7 @@ export default function GameCanvas() {
     setCoins(prev => {
       if (prev < def.price) return prev;
       addToInventory(itemId);
+      playBuySound();
       return prev - def.price;
     });
   }, [addToInventory]);
@@ -292,8 +309,13 @@ export default function GameCanvas() {
     cameraRef.current = { x: sx, y: sy };
   }, []);
 
+  // Track which map we're transitioning TO
+  const transitionTargetRef = useRef<MapId>('city');
+
   const switchMap = useCallback((toMap: MapId, spawnPos: Position) => {
+    transitionTargetRef.current = toMap;
     setTransitioning(true);
+    playPortalSound();
     pathRef.current = [];
     pathIndexRef.current = 0;
     targetRef.current = null;
@@ -316,6 +338,7 @@ export default function GameCanvas() {
     pathIndexRef.current = 0;
     targetRef.current = null;
     defendingRef.current = false;
+    playCombatStartSound();
     setCombat({
       active: true,
       monster: { ...monster },
@@ -324,12 +347,16 @@ export default function GameCanvas() {
       result: 'none',
     });
   }, []);
+  
+  // Keep startCombat ref in sync for game loop usage
+  useEffect(() => { startCombatRef.current = startCombat; }, [startCombat]);
 
   const handleCombatAttack = useCallback(() => {
     setCombat(prev => {
       if (!prev.monster || prev.result !== 'none' || !prev.playerTurn) return prev;
       const stats = playerStatsRef.current;
       const { damage, critical } = performAttack(stats, prev.monster, combatRand);
+      playHitSound();
       const newMonsterHp = prev.monster.hp - damage;
       const log = [...prev.log, `⚔️ Ти ${critical ? 'КРИТ! ' : ''}завдаєш ${damage} шкоди!`];
 
@@ -365,6 +392,7 @@ export default function GameCanvas() {
           }
           return { ...ps, xp: newXp };
         });
+        playVictorySound();
         return { ...prev, monster: { ...prev.monster, hp: 0 }, log: [...log, `🎉 ${prev.monster.name} переможений! ${lootMsg}`], result: 'win' };
       }
 
@@ -379,10 +407,12 @@ export default function GameCanvas() {
             actualDmg = Math.max(1, actualDmg - 2);
           }
           defendingRef.current = false;
+          playPlayerHitSound();
 
           setPlayerStats(ps => {
             const newHp = ps.hp - actualDmg;
             if (newHp <= 0) {
+              playDefeatSound();
               setCombat(cc => ({
                 ...cc,
                 log: [...cc.log, `💀 ${c.monster!.name} завдає ${actualDmg} шкоди! Тебе переможено...`],
@@ -745,6 +775,7 @@ export default function GameCanvas() {
       }
     }
     if (newlyCollected > 0) {
+      playCoinSound();
       setCoins(prev => prev + newlyCollected);
     }
 
@@ -754,6 +785,7 @@ export default function GameCanvas() {
       const dist = Math.hypot(bowPos.x - px, bowPos.y - py);
       if (dist < 1.5) {
         setHasBow(true);
+        playBowPickupSound();
         setLootMessage('🎀 Знайдено бантик Міки!');
         setTimeout(() => setLootMessage(null), 3000);
         // Replace bow tile with floor
@@ -942,6 +974,27 @@ export default function GameCanvas() {
       if (coinCheckTimer > 200) {
         coinCheckTimer = 0;
         checkCoinPickup();
+
+        // Auto-combat: check if any monster is adjacent to player
+        const curMap = currentMapRef.current;
+        if ((curMap === 'dungeon' || curMap === 'blueDungeon') && !combatStartPendingRef.current) {
+          const curMonsters = curMap === 'blueDungeon' ? blueMonstersRef.current : monstersRef.current;
+          const px = playerRef.current.x;
+          const py = playerRef.current.y;
+          for (const m of curMonsters) {
+            if (!m.isAlive) continue;
+            const d = Math.hypot(m.pos.x - px, m.pos.y - py);
+            if (d < 1.3) {
+              combatStartPendingRef.current = true;
+              const encounterMonster = m;
+              setTimeout(() => {
+                combatStartPendingRef.current = false;
+                startCombatRef.current(encounterMonster);
+              }, 0);
+              break;
+            }
+          }
+        }
       }
 
       if (time - playerPosUpdateTimer.current > 100) {
@@ -1051,7 +1104,11 @@ export default function GameCanvas() {
       {transitioning && (
         <div className="absolute inset-0 bg-black z-50 transition-opacity duration-500 flex items-center justify-center">
           <p className="text-primary text-xl font-bold animate-pulse">
-            {currentMap === 'city' ? '⚔️ Вхід до підземелля...' : currentMap === 'blueDungeon' ? '🔵 Синє підземелля...' : '🏙️ Повернення до міста...'}
+            {transitionTargetRef.current === 'city'
+              ? '🏙️ Повернення до міста...'
+              : transitionTargetRef.current === 'blueDungeon'
+                ? '🔵 Синє підземелля...'
+                : '⚔️ Вхід до підземелля...'}
           </p>
         </div>
       )}
@@ -1078,17 +1135,16 @@ export default function GameCanvas() {
       )}
 
       <GameHUD
-        gameTime={gameTime}
         questCount={questLog.length}
         onQuestLogToggle={() => setShowQuestLog(prev => !prev)}
         onInventoryToggle={() => setShowInventory(prev => !prev)}
-        playerStats={(currentMap === 'dungeon' || currentMap === 'blueDungeon') ? playerStats : undefined}
+        playerStats={playerStats}
         coins={coins}
         currentMap={currentMap}
       />
 
       {/* Map indicator */}
-      <div className="fixed top-14 right-3 z-40">
+      <div className="fixed top-12 right-3 z-40">
         <div className="glass-panel px-3 py-1 rounded-full text-xs font-bold" style={{ 
           color: currentMap === 'dungeon' ? '#e74c3c' : currentMap === 'blueDungeon' ? '#3498db' : '#4a9e5c' 
         }}>
@@ -1107,7 +1163,7 @@ export default function GameCanvas() {
       />
 
       {/* Start button under minimap */}
-      <div className="fixed z-40" style={{ top: (currentMap === 'dungeon' || currentMap === 'blueDungeon') ? '190px' : '130px', left: '12px' }}>
+      <div className="fixed z-40" style={{ top: (currentMap === 'dungeon' || currentMap === 'blueDungeon') ? '220px' : '170px', left: '12px' }}>
         <button
           onClick={handleRestart}
           className="glass-panel px-3 py-1.5 text-xs font-display font-bold text-primary 
@@ -1128,38 +1184,31 @@ export default function GameCanvas() {
         <InventoryUI
           items={inventory}
           coins={coins}
+          playerStats={playerStats}
           onUse={useItem}
           onClose={() => setShowInventory(false)}
+          characterImg={charImgRef.current}
         />
       )}
 
       {showShop && (
         <ShopUI
           coins={coins}
+          inventory={inventory}
           onBuy={handleBuy}
           onClose={() => setShowShop(false)}
         />
       )}
 
-      {currentDialogue && (() => {
-        // Filter responses based on conditions
-        const filteredDialogue = {
-          ...currentDialogue,
-          responses: currentDialogue.responses?.filter(r => {
-            if (r.condition === 'has_bow') return hasBow;
-            return true;
-          }),
-        };
-        return (
-          <DialogueBox
-            dialogue={filteredDialogue}
-            npcName={activeNpc?.name || ''}
-            npcIcon={activeNpc?.icon || ''}
-            onResponse={handleDialogueResponse}
-            onEnd={handleDialogueEnd}
-          />
-        );
-      })()}
+      {filteredDialogue && activeNpc && (
+        <DialogueBox
+          dialogue={filteredDialogue}
+          npcName={activeNpc.name}
+          npcIcon={activeNpc.icon}
+          onResponse={handleDialogueResponse}
+          onEnd={handleDialogueEnd}
+        />
+      )}
 
       <CombatUI
         combat={combat}

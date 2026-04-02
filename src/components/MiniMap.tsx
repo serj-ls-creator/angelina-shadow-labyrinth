@@ -13,7 +13,7 @@ export default function MiniMap({ playerPos, npcs, mapTiles, mapWidth, mapHeight
   const size = 100;
 
   return (
-    <div className="fixed top-14 left-3 z-40">
+    <div className="fixed z-40" style={{ top: '52px', left: '12px' }}>
       <div className="glass-panel p-1 rounded-full overflow-hidden neon-glow" 
            style={{ width: size + 8, height: size + 8 }}>
         <svg width={size} height={size * (mapHeight / mapWidth)} 
