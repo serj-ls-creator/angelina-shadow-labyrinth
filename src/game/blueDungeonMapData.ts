@@ -140,9 +140,9 @@ function generateSpiralMaze(): number[][] {
     }
   }
 
-  // Create center room for bow
-  for (let dy = -3; dy <= 3; dy++) {
-    for (let dx = -3; dx <= 3; dx++) {
+  // Create smaller center room for bow
+  for (let dy = -2; dy <= 2; dy++) {
+    for (let dx = -2; dx <= 2; dx++) {
       if (cy + dy >= 1 && cy + dy < BLUE_HEIGHT - 1 && cx + dx >= 1 && cx + dx < BLUE_WIDTH - 1) {
         map[cy + dy][cx + dx] = T.DUNGEON_FLOOR;
       }
