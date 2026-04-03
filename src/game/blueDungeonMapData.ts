@@ -42,7 +42,7 @@ function generateSpiralMaze(): number[][] {
   };
 
   // Generate spiral path from bottom-left to center
-  // The spiral goes: right -> up -> left -> down, each time shrinking inward
+  // Tighter spiral with spacing of 3 instead of 4
   const spiralPath: [number, number][] = [];
   let left = 2, right = BLUE_WIDTH - 3, top = 2, bottom = BLUE_HEIGHT - 3;
   let x = left, y = bottom; // start bottom-left
@@ -52,27 +52,27 @@ function generateSpiralMaze(): number[][] {
     if (dir === 0) { // right
       for (; x <= right; x++) spiralPath.push([x, y]);
       x--; y--;
-      bottom -= 4;
+      bottom -= 3;
       dir = 1;
     } else if (dir === 1) { // up
       for (; y >= top; y--) spiralPath.push([x, y]);
       y++; x--;
-      right -= 4;
+      right -= 3;
       dir = 2;
     } else if (dir === 2) { // left
       for (; x >= left; x--) spiralPath.push([x, y]);
       x++; y++;
-      top += 4;
+      top += 3;
       dir = 3;
     } else { // down
       for (; y <= bottom; y++) spiralPath.push([x, y]);
       y--; x++;
-      left += 4;
+      left += 3;
       dir = 0;
     }
 
     // Check if we reached near center
-    if (Math.abs(x - cx) < 5 && Math.abs(y - cy) < 5) break;
+    if (Math.abs(x - cx) < 4 && Math.abs(y - cy) < 4) break;
   }
 
   // Connect last spiral point to center
@@ -87,9 +87,9 @@ function generateSpiralMaze(): number[][] {
     spiralPath.push([fx, fy]);
   }
 
-  // Carve the spiral path with width ~3
+  // Carve the spiral path with width 1 (narrow corridors)
   for (const [px, py] of spiralPath) {
-    carveWide(px, py, 1);
+    carveWide(px, py, 0);
   }
 
   // Add long dead-end branches from the spiral path
