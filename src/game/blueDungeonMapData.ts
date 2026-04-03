@@ -42,7 +42,7 @@ function generateSpiralMaze(): number[][] {
   };
 
   // Generate spiral path from bottom-left to center
-  // The spiral goes: right -> up -> left -> down, each time shrinking inward
+  // Tighter spiral with spacing of 3 instead of 4
   const spiralPath: [number, number][] = [];
   let left = 2, right = BLUE_WIDTH - 3, top = 2, bottom = BLUE_HEIGHT - 3;
   let x = left, y = bottom; // start bottom-left
@@ -52,27 +52,27 @@ function generateSpiralMaze(): number[][] {
     if (dir === 0) { // right
       for (; x <= right; x++) spiralPath.push([x, y]);
       x--; y--;
-      bottom -= 4;
+      bottom -= 3;
       dir = 1;
     } else if (dir === 1) { // up
       for (; y >= top; y--) spiralPath.push([x, y]);
       y++; x--;
-      right -= 4;
+      right -= 3;
       dir = 2;
     } else if (dir === 2) { // left
       for (; x >= left; x--) spiralPath.push([x, y]);
       x++; y++;
-      top += 4;
+      top += 3;
       dir = 3;
     } else { // down
       for (; y <= bottom; y++) spiralPath.push([x, y]);
       y--; x++;
-      left += 4;
+      left += 3;
       dir = 0;
     }
 
     // Check if we reached near center
-    if (Math.abs(x - cx) < 5 && Math.abs(y - cy) < 5) break;
+    if (Math.abs(x - cx) < 4 && Math.abs(y - cy) < 4) break;
   }
 
   // Connect last spiral point to center
@@ -87,18 +87,18 @@ function generateSpiralMaze(): number[][] {
     spiralPath.push([fx, fy]);
   }
 
-  // Carve the spiral path with width ~3
+  // Carve the spiral path with width 1 (narrow corridors)
   for (const [px, py] of spiralPath) {
-    carveWide(px, py, 1);
+    carveWide(px, py, 0);
   }
 
-  // Add long dead-end branches from the spiral path
+  // Add many long dead-end branches from the spiral path
   const dirs = [[0, -1], [1, 0], [0, 1], [-1, 0]];
-  for (let i = 0; i < spiralPath.length; i += 8) {
-    if (rand() > 0.35) continue;
+  for (let i = 0; i < spiralPath.length; i += 4) {
+    if (rand() > 0.5) continue;
     const [bx, by] = spiralPath[i];
     const d = dirs[Math.floor(rand() * 4)];
-    let bLen = Math.floor(rand() * 25) + 10;
+    let bLen = Math.floor(rand() * 30) + 12;
     let nx = bx, ny = by;
     const branch: [number, number][] = [];
 
@@ -108,31 +108,41 @@ function generateSpiralMaze(): number[][] {
       if (nx < 2 || nx >= BLUE_WIDTH - 2 || ny < 2 || ny >= BLUE_HEIGHT - 2) break;
       branch.push([nx, ny]);
 
-      // Occasional perpendicular sub-branch
-      if (rand() > 0.85 && step > 3) {
+      // Occasional perpendicular sub-branch (more frequent)
+      if (rand() > 0.75 && step > 2) {
         const pd = d[0] === 0 ? [1, 0] : [0, 1];
         const sign = rand() > 0.5 ? 1 : -1;
         let sx = nx, sy = ny;
-        const subLen = Math.floor(rand() * 12) + 5;
+        const subLen = Math.floor(rand() * 15) + 6;
         for (let ss = 0; ss < subLen; ss++) {
           sx += pd[0] * sign;
           sy += pd[1] * sign;
           if (sx < 2 || sx >= BLUE_WIDTH - 2 || sy < 2 || sy >= BLUE_HEIGHT - 2) break;
           branch.push([sx, sy]);
+          
+          // Third-level sub-branches
+          if (rand() > 0.85 && ss > 3) {
+            let tx = sx, ty = sy;
+            const thirdLen = Math.floor(rand() * 8) + 3;
+            for (let tt = 0; tt < thirdLen; tt++) {
+              tx += d[0];
+              ty += d[1];
+              if (tx < 2 || tx >= BLUE_WIDTH - 2 || ty < 2 || ty >= BLUE_HEIGHT - 2) break;
+              branch.push([tx, ty]);
+            }
+          }
         }
       }
     }
 
     for (const [bpx, bpy] of branch) {
       carveWide(bpx, bpy, 0);
-      // Sometimes widen
-      if (rand() > 0.7) carveWide(bpx, bpy, 1);
     }
   }
 
-  // Create center room for bow
-  for (let dy = -3; dy <= 3; dy++) {
-    for (let dx = -3; dx <= 3; dx++) {
+  // Create smaller center room for bow
+  for (let dy = -2; dy <= 2; dy++) {
+    for (let dx = -2; dx <= 2; dx++) {
       if (cy + dy >= 1 && cy + dy < BLUE_HEIGHT - 1 && cx + dx >= 1 && cx + dx < BLUE_WIDTH - 1) {
         map[cy + dy][cx + dx] = T.DUNGEON_FLOOR;
       }

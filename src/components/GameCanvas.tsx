@@ -362,7 +362,8 @@ export default function GameCanvas() {
 
       if (newMonsterHp <= 0) {
         const mId = prev.monster!.id;
-        monstersRef.current = monstersRef.current.map(m => m.id === mId ? { ...m, isAlive: false } : m);
+        monstersRef.current = monstersRef.current.map(m => m.id === mId ? { ...m, isAlive: false, hp: 0 } : m);
+        blueMonstersRef.current = blueMonstersRef.current.map(m => m.id === mId ? { ...m, isAlive: false, hp: 0 } : m);
         const xpGain = prev.monster.xpReward;
         
         // Generate loot
@@ -424,6 +425,12 @@ export default function GameCanvas() {
             return { ...ps, hp: newHp };
           });
 
+          // Sync monster HP to refs
+          const syncHp = newMonsterHp;
+          const syncId = c.monster.id;
+          monstersRef.current = monstersRef.current.map(m => m.id === syncId ? { ...m, hp: syncHp } : m);
+          blueMonstersRef.current = blueMonstersRef.current.map(m => m.id === syncId ? { ...m, hp: syncHp } : m);
+
           return {
             ...c,
             monster: { ...c.monster, hp: newMonsterHp },
@@ -432,6 +439,11 @@ export default function GameCanvas() {
           };
         });
       }, 600);
+
+      // Sync monster HP to refs after player attack
+      const mId = prev.monster.id;
+      monstersRef.current = monstersRef.current.map(m => m.id === mId ? { ...m, hp: newMonsterHp } : m);
+      blueMonstersRef.current = blueMonstersRef.current.map(m => m.id === mId ? { ...m, hp: newMonsterHp } : m);
 
       return { ...prev, monster: { ...prev.monster, hp: newMonsterHp }, log, playerTurn: false };
     });
@@ -477,32 +489,44 @@ export default function GameCanvas() {
 
   const handleCombatFlee = useCallback(() => {
     setCombat(prev => {
-      if (prev.result !== 'none') return prev;
-      if (Math.random() > 0.4) {
-        return { ...prev, log: [...prev.log, '🏃 Вдалося втекти!'], result: 'fled' };
-      }
-      setTimeout(() => {
-        setCombat(c => {
-          if (!c.monster || c.result !== 'none') return c;
-          const { damage: mDmg } = performAttack(c.monster, playerStatsRef.current, combatRand);
-          let actualDmg = mDmg;
-          if (inventory.some(i => i.itemId === 'bearhat')) {
-            actualDmg = Math.max(1, actualDmg - 2);
+      if (prev.result !== 'none' || !prev.monster) return prev;
+      // Always succeed fleeing, move player 3 tiles away
+      const monster = prev.monster;
+      const px = playerRef.current.x;
+      const py = playerRef.current.y;
+      const dx = px - monster.pos.x;
+      const dy = py - monster.pos.y;
+      const dist = Math.hypot(dx, dy) || 1;
+      const ndx = dx / dist;
+      const ndy = dy / dist;
+
+      // Try to move 3 tiles away from monster
+      const mapId = currentMapRef.current;
+      const mapData = getCurrentMapData(mapId);
+      let fleePos: Position | null = null;
+      for (let d = 3; d >= 1; d--) {
+        const fx = Math.round(px + ndx * d);
+        const fy = Math.round(py + ndy * d);
+        if (fx >= 0 && fx < mapData.width && fy >= 0 && fy < mapData.height) {
+          if (mapData.isWalkable(mapData.tiles[fy]?.[fx])) {
+            fleePos = { x: fx, y: fy };
+            break;
           }
-          setPlayerStats(ps => {
-            const newHp = ps.hp - actualDmg;
-            if (newHp <= 0) {
-              setCombat(cc => ({ ...cc, log: [...cc.log, `💀 Не вдалося втекти...`], result: 'lose' }));
-              return { ...ps, hp: 0 };
-            }
-            return { ...ps, hp: newHp };
-          });
-          return { ...c, log: [...c.log, `❌ Не вдалося втекти! ${c.monster.name} завдає ${actualDmg} шкоди!`], playerTurn: true };
-        });
+        }
+      }
+      if (fleePos) {
+        playerRef.current = { ...fleePos };
+      }
+
+      // Immediately end combat
+      setTimeout(() => {
+        combatStartPendingRef.current = false;
+        setCombat({ active: false, monster: null, playerTurn: true, log: [], result: 'none' });
       }, 600);
-      return { ...prev, log: [...prev.log, '❌ Втеча не вдалася!'], playerTurn: false };
+
+      return { ...prev, log: [...prev.log, '🏃 Вдалося втекти!'], result: 'fled', playerTurn: false };
     });
-  }, [combatRand, inventory]);
+  }, []);
 
   const handleCombatEnd = useCallback(() => {
     if (combat.result === 'lose') {
