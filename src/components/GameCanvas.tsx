@@ -67,8 +67,15 @@ export default function GameCanvas() {
   const [coins, setCoins] = useState(0);
   const [showInventory, setShowInventory] = useState(false);
   const [showShop, setShowShop] = useState(false);
+  const [shopType, setShopType] = useState<'all' | 'healing' | 'combat' | 'unusual'>('all');
   const [activeEffects, setActiveEffects] = useState<ActiveEffect[]>([]);
   const [lootMessage, setLootMessage] = useState<string | null>(null);
+
+  // Equipment state (persists across inventory open/close)
+  type SlotType = 'weapon' | 'armor' | 'accessory' | 'shoes';
+  const [equipped, setEquipped] = useState<Record<SlotType, string | null>>({
+    weapon: null, armor: null, accessory: null, shoes: null,
+  });
 
   // Coin data in refs for performance
   const cityCoinsRef = useRef<Coin[]>(generateCityCoins());
