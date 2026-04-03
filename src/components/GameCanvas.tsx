@@ -362,7 +362,8 @@ export default function GameCanvas() {
 
       if (newMonsterHp <= 0) {
         const mId = prev.monster!.id;
-        monstersRef.current = monstersRef.current.map(m => m.id === mId ? { ...m, isAlive: false } : m);
+        monstersRef.current = monstersRef.current.map(m => m.id === mId ? { ...m, isAlive: false, hp: 0 } : m);
+        blueMonstersRef.current = blueMonstersRef.current.map(m => m.id === mId ? { ...m, isAlive: false, hp: 0 } : m);
         const xpGain = prev.monster.xpReward;
         
         // Generate loot
