@@ -25,7 +25,7 @@ export const dialogues: Record<string, DialogueNode> = {
     speaker: 'Бабуся Роза',
     text: 'Ха-ха, який гарний капюшон! Але все одно будь обережна. До речі, ти щось шукаєш?',
     responses: [
-      { text: 'Так! Я шукаю свою подружку Міку!', nextId: 'oldlady_miku' },
+      { text: 'Так! Я шукаю подружку Міку!', nextId: 'oldlady_miku' },
     ],
   },
   'oldlady_end': {
@@ -81,7 +81,7 @@ export const dialogues: Record<string, DialogueNode> = {
   'shop_open': {
     id: 'shop_open',
     speaker: 'Продавець Ханс',
-    text: 'OPEN_SHOP',
+    text: 'OPEN_SHOP:all',
   },
   'shop_miku': {
     id: 'shop_miku',
@@ -112,7 +112,97 @@ export const dialogues: Record<string, DialogueNode> = {
     ],
   },
 
-  // Mika dialogue - asks about the bow
+  // Medicine shop (Аптека)
+  'medicine_start': {
+    id: 'medicine_start',
+    speaker: 'Аптекарка Оля',
+    text: 'Ласкаво просимо до аптеки «Здоров\'я»! У нас є все для відновлення сил. Що тобі потрібно?',
+    responses: [
+      { text: '💊 Покажіть ліки та зілля!', nextId: 'medicine_open' },
+      { text: 'Ви не бачили дівчинку з рожевим бантиком?', nextId: 'medicine_miku' },
+    ],
+  },
+  'medicine_open': {
+    id: 'medicine_open',
+    speaker: 'Аптекарка Оля',
+    text: 'OPEN_SHOP:healing',
+  },
+  'medicine_miku': {
+    id: 'medicine_miku',
+    speaker: 'Аптекарка Оля',
+    text: 'З бантиком? Так, вона купила пакетик мармеладних ведмедиків і побігла кудись. Виглядала схвильованою!',
+    responses: [
+      { text: '💊 Тоді мені теж знадобляться ліки!', nextId: 'medicine_open' },
+      { text: 'Дякую!', nextId: 'medicine_end' },
+    ],
+  },
+  'medicine_end': {
+    id: 'medicine_end',
+    speaker: 'Аптекарка Оля',
+    text: 'Бережи себе, дитинко! І не забувай їсти вітаміни! 🍎',
+  },
+
+  // Police shop (Поліція)
+  'police_start': {
+    id: 'police_start',
+    speaker: 'Офіцер Макс',
+    text: 'Стій! Хто тут? А, дівчинка в капюшоні Куромі... Що тобі потрібно? У нас тут поліцейський арсенал.',
+    responses: [
+      { text: '🛡️ Покажіть бойове спорядження!', nextId: 'police_open' },
+      { text: 'Я шукаю свою подругу. Тут небезпечно?', nextId: 'police_danger' },
+    ],
+  },
+  'police_open': {
+    id: 'police_open',
+    speaker: 'Офіцер Макс',
+    text: 'OPEN_SHOP:combat',
+  },
+  'police_danger': {
+    id: 'police_danger',
+    speaker: 'Офіцер Макс',
+    text: 'Небезпечно?! В підземеллях повно монстрів! Раджу озброїтися перед тим, як туди йти. У мене є все для захисту!',
+    responses: [
+      { text: '🛡️ Тоді покажіть зброю!', nextId: 'police_open' },
+      { text: 'Дякую за попередження!', nextId: 'police_end' },
+    ],
+  },
+  'police_end': {
+    id: 'police_end',
+    speaker: 'Офіцер Макс',
+    text: 'Будь обережна! І якщо побачиш монстрів — біжи або бийся, але не стій на місці! 💪',
+  },
+
+  // Museum shop (Музей)
+  'museum_start': {
+    id: 'museum_start',
+    speaker: 'Куратор Софія',
+    text: 'О, гостя! Ласкаво просимо до Музею дивовижних речей! У нас зібрані найнезвичайніші предмети з усього світу!',
+    responses: [
+      { text: '✨ Покажіть незвичайні речі!', nextId: 'museum_open' },
+      { text: 'Тут є щось для подорожей підземеллями?', nextId: 'museum_dungeon' },
+    ],
+  },
+  'museum_open': {
+    id: 'museum_open',
+    speaker: 'Куратор Софія',
+    text: 'OPEN_SHOP:unusual',
+  },
+  'museum_dungeon': {
+    id: 'museum_dungeon',
+    speaker: 'Куратор Софія',
+    text: 'О так! Водні кросівки дозволять ходити по воді, а компас покаже шлях! Є ще багато цікавого...',
+    responses: [
+      { text: '✨ Хочу подивитись усе!', nextId: 'museum_open' },
+      { text: 'Круто, дякую!', nextId: 'museum_end' },
+    ],
+  },
+  'museum_end': {
+    id: 'museum_end',
+    speaker: 'Куратор Софія',
+    text: 'Заходь ще! Кожен предмет тут має свою чарівну історію! ✨',
+  },
+
+  // Mika dialogue
   'mika_start': {
     id: 'mika_start',
     speaker: 'Міка',
@@ -187,5 +277,32 @@ export const npcs: NPC[] = [
     icon: '🏪',
     hasInteracted: false,
     description: 'Власник магазинчику',
+  },
+  {
+    id: 'medicine',
+    name: 'Аптекарка Оля',
+    pos: { x: 5, y: 26 },
+    dialogueId: 'medicine_start',
+    icon: '🏥',
+    hasInteracted: false,
+    description: 'Продає ліки та зілля',
+  },
+  {
+    id: 'police',
+    name: 'Офіцер Макс',
+    pos: { x: 19, y: 26 },
+    dialogueId: 'police_start',
+    icon: '🛡️',
+    hasInteracted: false,
+    description: 'Поліцейський арсенал',
+  },
+  {
+    id: 'museum',
+    name: 'Куратор Софія',
+    pos: { x: 33, y: 26 },
+    dialogueId: 'museum_start',
+    icon: '🏛️',
+    hasInteracted: false,
+    description: 'Музей дивовижних речей',
   },
 ];
