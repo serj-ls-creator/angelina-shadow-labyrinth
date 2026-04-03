@@ -736,9 +736,11 @@ export default function GameCanvas() {
     const next = dialogues[nextId];
     if (next) {
       // Check for shop open trigger
-      if (next.text === 'OPEN_SHOP') {
+      if (next.text.startsWith('OPEN_SHOP')) {
+        const type = next.text.split(':')[1] as 'all' | 'healing' | 'combat' | 'unusual' || 'all';
         setCurrentDialogue(null);
         setActiveNpc(null);
+        setShopType(type);
         setShowShop(true);
         return;
       }
