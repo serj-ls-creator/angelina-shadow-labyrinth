@@ -1223,6 +1223,8 @@ export default function GameCanvas() {
           onUse={useItem}
           onClose={() => setShowInventory(false)}
           characterImg={charImgRef.current}
+          equipped={equipped}
+          onEquipChange={setEquipped}
         />
       )}
 
@@ -1232,6 +1234,7 @@ export default function GameCanvas() {
           inventory={inventory}
           onBuy={handleBuy}
           onClose={() => setShowShop(false)}
+          shopType={shopType}
         />
       )}
 
