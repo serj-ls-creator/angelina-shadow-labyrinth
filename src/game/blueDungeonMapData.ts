@@ -21,126 +21,64 @@ function generateSpiralMaze(): number[][] {
   const cx = Math.floor(BLUE_WIDTH / 2);
   const cy = Math.floor(BLUE_HEIGHT / 2);
 
-  // Carve a path of width 1 (plus neighbors for width ~3)
-  const carvePath = (path: [number, number][]) => {
-    for (const [px, py] of path) {
-      if (px >= 1 && px < BLUE_WIDTH - 1 && py >= 1 && py < BLUE_HEIGHT - 1) {
-        map[py][px] = T.DUNGEON_FLOOR;
-      }
+  // Use recursive backtracker maze on a grid of cells spaced 2 apart
+  // This ensures walls between every corridor
+  const cellW = Math.floor((BLUE_WIDTH - 2) / 2);
+  const cellH = Math.floor((BLUE_HEIGHT - 2) / 2);
+  const visited = new Uint8Array(cellW * cellH);
+  
+  const cellToMap = (cx2: number, cy2: number): [number, number] => [cx2 * 2 + 1, cy2 * 2 + 1];
+  const carve = (mx: number, my: number) => {
+    if (mx >= 1 && mx < BLUE_WIDTH - 1 && my >= 1 && my < BLUE_HEIGHT - 1) {
+      map[my][mx] = T.DUNGEON_FLOOR;
     }
   };
 
-  const carveWide = (x: number, y: number, w: number = 1) => {
-    for (let dy = -w; dy <= w; dy++) {
-      for (let dx = -w; dx <= w; dx++) {
-        const nx = x + dx, ny = y + dy;
-        if (nx >= 1 && nx < BLUE_WIDTH - 1 && ny >= 1 && ny < BLUE_HEIGHT - 1) {
-          map[ny][nx] = T.DUNGEON_FLOOR;
-        }
-      }
-    }
-  };
+  // Iterative backtracker to avoid stack overflow
+  const stack: [number, number][] = [];
+  const startCx = 0, startCy = cellH - 1; // bottom-left
+  visited[startCy * cellW + startCx] = 1;
+  const [smx, smy] = cellToMap(startCx, startCy);
+  carve(smx, smy);
+  stack.push([startCx, startCy]);
 
-  // Generate spiral path from bottom-left to center
-  // Tighter spiral with spacing of 3 instead of 4
-  const spiralPath: [number, number][] = [];
-  let left = 2, right = BLUE_WIDTH - 3, top = 2, bottom = BLUE_HEIGHT - 3;
-  let x = left, y = bottom; // start bottom-left
-  let dir = 0; // 0=right, 1=up, 2=left, 3=down
-
-  while (left < right && top < bottom) {
-    if (dir === 0) { // right
-      for (; x <= right; x++) spiralPath.push([x, y]);
-      x--; y--;
-      bottom -= 3;
-      dir = 1;
-    } else if (dir === 1) { // up
-      for (; y >= top; y--) spiralPath.push([x, y]);
-      y++; x--;
-      right -= 3;
-      dir = 2;
-    } else if (dir === 2) { // left
-      for (; x >= left; x--) spiralPath.push([x, y]);
-      x++; y++;
-      top += 3;
-      dir = 3;
-    } else { // down
-      for (; y <= bottom; y++) spiralPath.push([x, y]);
-      y--; x++;
-      left += 3;
-      dir = 0;
-    }
-
-    // Check if we reached near center
-    if (Math.abs(x - cx) < 4 && Math.abs(y - cy) < 4) break;
-  }
-
-  // Connect last spiral point to center
-  const lastPt = spiralPath[spiralPath.length - 1] || [x, y];
-  let fx = lastPt[0], fy = lastPt[1];
-  while (fx !== cx) {
-    fx += fx < cx ? 1 : -1;
-    spiralPath.push([fx, fy]);
-  }
-  while (fy !== cy) {
-    fy += fy < cy ? 1 : -1;
-    spiralPath.push([fx, fy]);
-  }
-
-  // Carve the spiral path with width 1 (narrow corridors)
-  for (const [px, py] of spiralPath) {
-    carveWide(px, py, 0);
-  }
-
-  // Add many long dead-end branches from the spiral path
   const dirs = [[0, -1], [1, 0], [0, 1], [-1, 0]];
-  for (let i = 0; i < spiralPath.length; i += 4) {
-    if (rand() > 0.5) continue;
-    const [bx, by] = spiralPath[i];
-    const d = dirs[Math.floor(rand() * 4)];
-    let bLen = Math.floor(rand() * 30) + 12;
-    let nx = bx, ny = by;
-    const branch: [number, number][] = [];
 
-    for (let step = 0; step < bLen; step++) {
-      nx += d[0];
-      ny += d[1];
-      if (nx < 2 || nx >= BLUE_WIDTH - 2 || ny < 2 || ny >= BLUE_HEIGHT - 2) break;
-      branch.push([nx, ny]);
-
-      // Occasional perpendicular sub-branch (more frequent)
-      if (rand() > 0.75 && step > 2) {
-        const pd = d[0] === 0 ? [1, 0] : [0, 1];
-        const sign = rand() > 0.5 ? 1 : -1;
-        let sx = nx, sy = ny;
-        const subLen = Math.floor(rand() * 15) + 6;
-        for (let ss = 0; ss < subLen; ss++) {
-          sx += pd[0] * sign;
-          sy += pd[1] * sign;
-          if (sx < 2 || sx >= BLUE_WIDTH - 2 || sy < 2 || sy >= BLUE_HEIGHT - 2) break;
-          branch.push([sx, sy]);
-          
-          // Third-level sub-branches
-          if (rand() > 0.85 && ss > 3) {
-            let tx = sx, ty = sy;
-            const thirdLen = Math.floor(rand() * 8) + 3;
-            for (let tt = 0; tt < thirdLen; tt++) {
-              tx += d[0];
-              ty += d[1];
-              if (tx < 2 || tx >= BLUE_WIDTH - 2 || ty < 2 || ty >= BLUE_HEIGHT - 2) break;
-              branch.push([tx, ty]);
-            }
-          }
-        }
+  while (stack.length > 0) {
+    const [curX, curY] = stack[stack.length - 1];
+    // Find unvisited neighbors
+    const neighbors: number[] = [];
+    for (let d = 0; d < 4; d++) {
+      const nx = curX + dirs[d][0];
+      const ny = curY + dirs[d][1];
+      if (nx >= 0 && nx < cellW && ny >= 0 && ny < cellH && !visited[ny * cellW + nx]) {
+        neighbors.push(d);
       }
     }
 
-    for (const [bpx, bpy] of branch) {
-      carveWide(bpx, bpy, 0);
+    if (neighbors.length === 0) {
+      stack.pop();
+      continue;
     }
+
+    // Pick random neighbor
+    const d = neighbors[Math.floor(rand() * neighbors.length)];
+    const nx = curX + dirs[d][0];
+    const ny = curY + dirs[d][1];
+    visited[ny * cellW + nx] = 1;
+
+    // Carve the cell and the wall between
+    const [mx, my] = cellToMap(curX, curY);
+    const [nmx, nmy] = cellToMap(nx, ny);
+    // Carve wall between
+    carve(mx + dirs[d][0], my + dirs[d][1]);
+    // Carve destination cell
+    carve(nmx, nmy);
+
+    stack.push([nx, ny]);
   }
 
-  // Create smaller center room for bow
+  // Ensure center room is carved and connected
   for (let dy = -2; dy <= 2; dy++) {
     for (let dx = -2; dx <= 2; dx++) {
       if (cy + dy >= 1 && cy + dy < BLUE_HEIGHT - 1 && cx + dx >= 1 && cx + dx < BLUE_WIDTH - 1) {
@@ -148,6 +86,26 @@ function generateSpiralMaze(): number[][] {
       }
     }
   }
+
+  // Carve a guaranteed path from bottom-left to center using spiral
+  const spiralPath: [number, number][] = [];
+  let sl = 2, sr = BLUE_WIDTH - 3, st = 2, sb = BLUE_HEIGHT - 3;
+  let sx = sl, sy = sb;
+  let sdir = 0;
+
+  while (sl < sr && st < sb) {
+    if (sdir === 0) { for (; sx <= sr; sx++) spiralPath.push([sx, sy]); sx--; sy--; sb -= 5; sdir = 1; }
+    else if (sdir === 1) { for (; sy >= st; sy--) spiralPath.push([sx, sy]); sy++; sx--; sr -= 5; sdir = 2; }
+    else if (sdir === 2) { for (; sx >= sl; sx--) spiralPath.push([sx, sy]); sx++; sy++; st += 5; sdir = 3; }
+    else { for (; sy <= sb; sy++) spiralPath.push([sx, sy]); sy--; sx++; sl += 5; sdir = 0; }
+    if (Math.abs(sx - cx) < 5 && Math.abs(sy - cy) < 5) break;
+  }
+  // Connect to center
+  const lastPt = spiralPath[spiralPath.length - 1] || [sx, sy];
+  let fpx = lastPt[0], fpy = lastPt[1];
+  while (fpx !== cx) { fpx += fpx < cx ? 1 : -1; spiralPath.push([fpx, fpy]); }
+  while (fpy !== cy) { fpy += fpy < cy ? 1 : -1; spiralPath.push([fpx, fpy]); }
+  for (const [px, py] of spiralPath) carve(px, py);
 
   // Place bow in center
   map[cy][cx] = T.BOW_ITEM;
