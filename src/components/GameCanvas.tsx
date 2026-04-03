@@ -425,6 +425,12 @@ export default function GameCanvas() {
             return { ...ps, hp: newHp };
           });
 
+          // Sync monster HP to refs
+          const syncHp = newMonsterHp;
+          const syncId = c.monster.id;
+          monstersRef.current = monstersRef.current.map(m => m.id === syncId ? { ...m, hp: syncHp } : m);
+          blueMonstersRef.current = blueMonstersRef.current.map(m => m.id === syncId ? { ...m, hp: syncHp } : m);
+
           return {
             ...c,
             monster: { ...c.monster, hp: newMonsterHp },
@@ -433,6 +439,11 @@ export default function GameCanvas() {
           };
         });
       }, 600);
+
+      // Sync monster HP to refs after player attack
+      const mId = prev.monster.id;
+      monstersRef.current = monstersRef.current.map(m => m.id === mId ? { ...m, hp: newMonsterHp } : m);
+      blueMonstersRef.current = blueMonstersRef.current.map(m => m.id === mId ? { ...m, hp: newMonsterHp } : m);
 
       return { ...prev, monster: { ...prev.monster, hp: newMonsterHp }, log, playerTurn: false };
     });
