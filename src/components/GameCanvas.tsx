@@ -767,9 +767,11 @@ export default function GameCanvas() {
 
   const handleDialogueEnd = useCallback(() => {
     if (currentDialogue?.questUpdate) {
-      if (currentDialogue.text === 'OPEN_SHOP') {
+      if (currentDialogue.text.startsWith('OPEN_SHOP')) {
+        const type = currentDialogue.text.split(':')[1] as 'all' | 'healing' | 'combat' | 'unusual' || 'all';
         setCurrentDialogue(null);
         setActiveNpc(null);
+        setShopType(type);
         setShowShop(true);
         return;
       }
