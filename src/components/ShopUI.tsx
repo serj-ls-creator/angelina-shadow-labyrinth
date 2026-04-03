@@ -1,15 +1,39 @@
 import { useState } from 'react';
 import { ITEM_DEFS, ItemDef, InventoryItem, getItemDef } from '../game/inventorySystem';
 
+export type ShopType = 'all' | 'healing' | 'combat' | 'unusual';
+
+const HEALING_IDS = ['gum', 'tea', 'bear', 'donut', 'cocoa', 'apple', 'plushbear'];
+const COMBAT_IDS = ['lollisword', 'wand', 'bubblegun', 'heartbow', 'bathbomb', 'megaphone', 'flash', 'clock', 'hologram', 'spellbook', 'bearhat', 'shinycloak', 'cloak'];
+const UNUSUAL_IDS = ['watershoes', 'battery', 'compass', 'magnet', 'discohat', 'glitter', 'luckycoin', 'perfume', 'teleport'];
+
+function getShopItems(type: ShopType): ItemDef[] {
+  switch (type) {
+    case 'healing': return ITEM_DEFS.filter(i => HEALING_IDS.includes(i.id));
+    case 'combat': return ITEM_DEFS.filter(i => COMBAT_IDS.includes(i.id));
+    case 'unusual': return ITEM_DEFS.filter(i => UNUSUAL_IDS.includes(i.id));
+    default: return ITEM_DEFS;
+  }
+}
+
+const SHOP_NAMES: Record<ShopType, string> = {
+  all: '🏪 Магазин Ханса',
+  healing: '🏥 Аптека «Здоров\'я»',
+  combat: '🛡️ Поліцейський арсенал',
+  unusual: '🏛️ Музей дивовижних речей',
+};
+
 interface ShopUIProps {
   coins: number;
   inventory: InventoryItem[];
   onBuy: (itemId: string) => void;
   onClose: () => void;
+  shopType: ShopType;
 }
 
-export default function ShopUI({ coins, inventory, onBuy, onClose }: ShopUIProps) {
+export default function ShopUI({ coins, inventory, onBuy, onClose, shopType }: ShopUIProps) {
   const [cart, setCart] = useState<string[]>([]);
+  const shopItems = getShopItems(shopType);
 
   const cartTotal = cart.reduce((sum, id) => sum + (getItemDef(id)?.price || 0), 0);
   const canCheckout = cartTotal > 0 && cartTotal <= coins;
@@ -36,7 +60,7 @@ export default function ShopUI({ coins, inventory, onBuy, onClose }: ShopUIProps
       <div className="glass-panel p-3 max-w-lg w-full relative neon-glow max-h-[85vh] flex flex-col"
            onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-2">
-          <h2 className="font-display text-sm text-primary font-bold">🏪 Магазин Ханса</h2>
+          <h2 className="font-display text-sm text-primary font-bold">{SHOP_NAMES[shopType]}</h2>
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-mono text-yellow-400">🪙 {coins}</span>
             <button onClick={onClose} className="text-muted-foreground hover:text-foreground text-lg">✕</button>
@@ -44,22 +68,14 @@ export default function ShopUI({ coins, inventory, onBuy, onClose }: ShopUIProps
         </div>
 
         <div className="flex gap-2 flex-1 min-h-0">
-          {/* Shop items */}
           <div className="flex-1 overflow-y-auto space-y-1 pr-1">
             <p className="text-[9px] text-muted-foreground font-bold mb-1">ТОВАРИ</p>
-            {ITEM_DEFS.map(item => {
+            {shopItems.map(item => {
               const canAfford = coins - cartTotal >= item.price;
               return (
-                <button
-                  key={item.id}
-                  onClick={() => canAfford && addToCart(item.id)}
-                  disabled={!canAfford}
+                <button key={item.id} onClick={() => canAfford && addToCart(item.id)} disabled={!canAfford}
                   className={`w-full p-1.5 rounded-md border text-left transition-all active:scale-[0.98] flex items-center gap-1.5
-                    ${canAfford
-                      ? 'border-border bg-muted/20 hover:bg-muted/40'
-                      : 'border-border/30 bg-muted/10 opacity-40 cursor-not-allowed'
-                    }`}
-                >
+                    ${canAfford ? 'border-border bg-muted/20 hover:bg-muted/40' : 'border-border/30 bg-muted/10 opacity-40 cursor-not-allowed'}`}>
                   <span className="text-sm flex-shrink-0">{item.icon}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-foreground text-[9px] font-bold truncate">{item.name}</p>
@@ -73,12 +89,11 @@ export default function ShopUI({ coins, inventory, onBuy, onClose }: ShopUIProps
             })}
           </div>
 
-          {/* Cart / Inventory */}
           <div className="w-36 flex flex-col border-l border-border pl-2">
             <p className="text-[9px] text-muted-foreground font-bold mb-1">КОШИК ({cart.length})</p>
             <div className="flex-1 overflow-y-auto space-y-1 min-h-[60px]">
               {cart.length === 0 ? (
-                <p className="text-[8px] text-muted-foreground text-center py-2">Перетягни сюди</p>
+                <p className="text-[8px] text-muted-foreground text-center py-2">Натисни на товар</p>
               ) : cart.map((id, i) => {
                 const def = getItemDef(id);
                 if (!def) return null;
@@ -99,26 +114,18 @@ export default function ShopUI({ coins, inventory, onBuy, onClose }: ShopUIProps
             )}
 
             <div className="flex gap-1 mt-1">
-              <button
-                onClick={handleOk}
-                disabled={!canCheckout}
+              <button onClick={handleOk} disabled={!canCheckout}
                 className={`flex-1 p-1.5 rounded text-[10px] font-bold transition-all active:scale-95 ${
-                  canCheckout
-                    ? 'bg-green-500/20 hover:bg-green-500/30 border border-green-500/40 text-green-400'
-                    : 'bg-muted/20 border border-border text-muted-foreground cursor-not-allowed'
-                }`}
-              >
+                  canCheckout ? 'bg-green-500/20 hover:bg-green-500/30 border border-green-500/40 text-green-400'
+                    : 'bg-muted/20 border border-border text-muted-foreground cursor-not-allowed'}`}>
                 ✓ Ок
               </button>
-              <button
-                onClick={() => setCart([])}
-                className="flex-1 p-1.5 rounded text-[10px] font-bold bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 transition-all active:scale-95"
-              >
+              <button onClick={() => setCart([])}
+                className="flex-1 p-1.5 rounded text-[10px] font-bold bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 transition-all active:scale-95">
                 ✕ Скасувати
               </button>
             </div>
 
-            {/* Current inventory */}
             <div className="mt-2 border-t border-border pt-1">
               <p className="text-[9px] text-muted-foreground font-bold mb-1">ІНВЕНТАР</p>
               <div className="max-h-24 overflow-y-auto space-y-0.5">

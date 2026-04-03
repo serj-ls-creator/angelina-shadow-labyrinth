@@ -1,18 +1,10 @@
-import { useState } from 'react';
+import { Dispatch, SetStateAction } from 'react';
 import { InventoryItem, getItemDef, ItemDef } from '../game/inventorySystem';
 import { PlayerCombatStats } from '../game/combatSystem';
 
-interface InventoryUIProps {
-  items: InventoryItem[];
-  coins: number;
-  playerStats: PlayerCombatStats;
-  onUse: (itemId: string) => void;
-  onClose: () => void;
-  characterImg: HTMLImageElement | null;
-}
-
 // Equipment slot types
-type SlotType = 'weapon' | 'armor' | 'accessory' | 'shoes';
+export type SlotType = 'weapon' | 'armor' | 'accessory' | 'shoes';
+
 const SLOT_INFO: { type: SlotType; label: string; icon: string }[] = [
   { type: 'weapon', label: 'Зброя', icon: '⚔️' },
   { type: 'armor', label: 'Броня', icon: '🛡️' },
@@ -41,15 +33,22 @@ function isUsableItem(def: ItemDef): boolean {
          t === 'teleportRandom' || t === 'invisibility';
 }
 
-export default function InventoryUI({ items, coins, playerStats, onUse, onClose, characterImg }: InventoryUIProps) {
-  const [equipped, setEquipped] = useState<Record<SlotType, string | null>>({
-    weapon: null, armor: null, accessory: null, shoes: null,
-  });
+interface InventoryUIProps {
+  items: InventoryItem[];
+  coins: number;
+  playerStats: PlayerCombatStats;
+  onUse: (itemId: string) => void;
+  onClose: () => void;
+  characterImg: HTMLImageElement | null;
+  equipped: Record<SlotType, string | null>;
+  onEquipChange: Dispatch<SetStateAction<Record<SlotType, string | null>>>;
+}
 
+export default function InventoryUI({ items, coins, playerStats, onUse, onClose, characterImg, equipped, onEquipChange }: InventoryUIProps) {
   const toggleEquip = (itemId: string) => {
     const slot = getSlotForItem(itemId);
     if (!slot) return;
-    setEquipped(prev => ({
+    onEquipChange(prev => ({
       ...prev,
       [slot]: prev[slot] === itemId ? null : itemId,
     }));
@@ -57,7 +56,6 @@ export default function InventoryUI({ items, coins, playerStats, onUse, onClose,
 
   const equippedIds = new Set(Object.values(equipped).filter(Boolean));
 
-  // Separate items into equippable and usable
   const equippableItems = items.filter(i => getSlotForItem(i.itemId) !== null);
   const usableItems = items.filter(i => {
     const def = getItemDef(i.itemId);
@@ -82,9 +80,7 @@ export default function InventoryUI({ items, coins, playerStats, onUse, onClose,
         </div>
 
         <div className="flex gap-2 flex-1 min-h-0">
-          {/* Left: Items list */}
           <div className="flex-1 overflow-y-auto pr-1">
-            {/* Usable items */}
             {usableItems.length > 0 && (
               <>
                 <p className="text-[9px] text-green-400 font-bold mb-1">🧪 ВИКОРИСТАТИ</p>
@@ -93,12 +89,8 @@ export default function InventoryUI({ items, coins, playerStats, onUse, onClose,
                     const def = getItemDef(inv.itemId);
                     if (!def) return null;
                     return (
-                      <button
-                        key={inv.itemId}
-                        onClick={() => onUse(inv.itemId)}
-                        className="p-1.5 rounded-md border border-green-500/30 bg-green-500/10 hover:bg-green-500/20
-                                   transition-all active:scale-95 text-left"
-                      >
+                      <button key={inv.itemId} onClick={() => onUse(inv.itemId)}
+                        className="p-1.5 rounded-md border border-green-500/30 bg-green-500/10 hover:bg-green-500/20 transition-all active:scale-95 text-left">
                         <div className="flex items-center gap-1">
                           <span className="text-sm">{def.icon}</span>
                           <div className="flex-1 min-w-0">
@@ -118,7 +110,6 @@ export default function InventoryUI({ items, coins, playerStats, onUse, onClose,
               </>
             )}
 
-            {/* Equippable items */}
             {equippableItems.length > 0 && (
               <>
                 <p className="text-[9px] text-blue-400 font-bold mb-1">⚔️ СПОРЯДЖЕННЯ</p>
@@ -128,15 +119,10 @@ export default function InventoryUI({ items, coins, playerStats, onUse, onClose,
                     if (!def) return null;
                     const isEquipped = equippedIds.has(inv.itemId);
                     return (
-                      <button
-                        key={inv.itemId}
-                        onClick={() => toggleEquip(inv.itemId)}
+                      <button key={inv.itemId} onClick={() => toggleEquip(inv.itemId)}
                         className={`p-1.5 rounded-md border transition-all active:scale-95 text-left ${
-                          isEquipped
-                            ? 'border-primary/60 bg-primary/20'
-                            : 'border-border bg-muted/20 hover:bg-muted/40'
-                        }`}
-                      >
+                          isEquipped ? 'border-primary/60 bg-primary/20' : 'border-border bg-muted/20 hover:bg-muted/40'
+                        }`}>
                         <div className="flex items-center gap-1">
                           <span className="text-sm">{def.icon}</span>
                           <div className="flex-1 min-w-0">
@@ -152,7 +138,6 @@ export default function InventoryUI({ items, coins, playerStats, onUse, onClose,
               </>
             )}
 
-            {/* Passive items */}
             {passiveItems.length > 0 && (
               <>
                 <p className="text-[9px] text-purple-400 font-bold mb-1">✨ ПАСИВНІ</p>
@@ -181,9 +166,7 @@ export default function InventoryUI({ items, coins, playerStats, onUse, onClose,
             )}
           </div>
 
-          {/* Right: Character with slots */}
           <div className="w-28 flex flex-col items-center border-l border-border pl-2">
-            {/* Character display */}
             <div className="w-20 h-24 rounded-lg border border-primary/30 bg-primary/5 flex items-center justify-center mb-2 relative overflow-hidden">
               {characterImg && characterImg.complete ? (
                 <img src={characterImg.src} alt="Персонаж" className="w-16 h-16 object-contain" />
@@ -192,38 +175,22 @@ export default function InventoryUI({ items, coins, playerStats, onUse, onClose,
               )}
             </div>
 
-            {/* Stats */}
             <div className="w-full text-[8px] text-muted-foreground space-y-0.5 mb-2">
-              <div className="flex justify-between">
-                <span>❤️ HP</span>
-                <span className="text-foreground">{playerStats.hp}/{playerStats.maxHp}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>⚔️ АТК</span>
-                <span className="text-foreground">{playerStats.attack}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>🛡️ ЗАХ</span>
-                <span className="text-foreground">{playerStats.defense}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>⭐ Рів.</span>
-                <span className="text-foreground">{playerStats.level}</span>
-              </div>
+              <div className="flex justify-between"><span>❤️ HP</span><span className="text-foreground">{playerStats.hp}/{playerStats.maxHp}</span></div>
+              <div className="flex justify-between"><span>⚔️ АТК</span><span className="text-foreground">{playerStats.attack}</span></div>
+              <div className="flex justify-between"><span>🛡️ ЗАХ</span><span className="text-foreground">{playerStats.defense}</span></div>
+              <div className="flex justify-between"><span>⭐ Рів.</span><span className="text-foreground">{playerStats.level}</span></div>
             </div>
 
-            {/* Equipment slots */}
             <div className="w-full space-y-1">
               {SLOT_INFO.map(slot => {
                 const eqId = equipped[slot.type];
                 const def = eqId ? getItemDef(eqId) : null;
                 return (
-                  <div
-                    key={slot.type}
+                  <div key={slot.type}
                     className={`p-1 rounded border text-[8px] flex items-center gap-1 ${
                       def ? 'border-primary/40 bg-primary/10' : 'border-border/50 bg-muted/10'
-                    }`}
-                  >
+                    }`}>
                     <span className="text-xs">{def ? def.icon : slot.icon}</span>
                     <span className={def ? 'text-foreground truncate' : 'text-muted-foreground truncate'}>
                       {def ? def.name : slot.label}

@@ -67,8 +67,15 @@ export default function GameCanvas() {
   const [coins, setCoins] = useState(0);
   const [showInventory, setShowInventory] = useState(false);
   const [showShop, setShowShop] = useState(false);
+  const [shopType, setShopType] = useState<'all' | 'healing' | 'combat' | 'unusual'>('all');
   const [activeEffects, setActiveEffects] = useState<ActiveEffect[]>([]);
   const [lootMessage, setLootMessage] = useState<string | null>(null);
+
+  // Equipment state (persists across inventory open/close)
+  type SlotType = 'weapon' | 'armor' | 'accessory' | 'shoes';
+  const [equipped, setEquipped] = useState<Record<SlotType, string | null>>({
+    weapon: null, armor: null, accessory: null, shoes: null,
+  });
 
   // Coin data in refs for performance
   const cityCoinsRef = useRef<Coin[]>(generateCityCoins());
@@ -729,9 +736,11 @@ export default function GameCanvas() {
     const next = dialogues[nextId];
     if (next) {
       // Check for shop open trigger
-      if (next.text === 'OPEN_SHOP') {
+      if (next.text.startsWith('OPEN_SHOP')) {
+        const type = next.text.split(':')[1] as 'all' | 'healing' | 'combat' | 'unusual' || 'all';
         setCurrentDialogue(null);
         setActiveNpc(null);
+        setShopType(type);
         setShowShop(true);
         return;
       }
@@ -758,9 +767,11 @@ export default function GameCanvas() {
 
   const handleDialogueEnd = useCallback(() => {
     if (currentDialogue?.questUpdate) {
-      if (currentDialogue.text === 'OPEN_SHOP') {
+      if (currentDialogue.text.startsWith('OPEN_SHOP')) {
+        const type = currentDialogue.text.split(':')[1] as 'all' | 'healing' | 'combat' | 'unusual' || 'all';
         setCurrentDialogue(null);
         setActiveNpc(null);
+        setShopType(type);
         setShowShop(true);
         return;
       }
@@ -1212,6 +1223,8 @@ export default function GameCanvas() {
           onUse={useItem}
           onClose={() => setShowInventory(false)}
           characterImg={charImgRef.current}
+          equipped={equipped}
+          onEquipChange={setEquipped}
         />
       )}
 
@@ -1221,6 +1234,7 @@ export default function GameCanvas() {
           inventory={inventory}
           onBuy={handleBuy}
           onClose={() => setShowShop(false)}
+          shopType={shopType}
         />
       )}
 
