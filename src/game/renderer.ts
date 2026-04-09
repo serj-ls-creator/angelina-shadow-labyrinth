@@ -6,6 +6,57 @@ import { blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, getBlueTileColor, getBlueBui
 const HALF_W = TILE_SIZE / 2;
 const HALF_H = TILE_SIZE / 4;
 
+// ---- Color cache (darken/lighten are pure, same inputs = same output) ----
+const colorCache = new Map<string, string>();
+
+function darken(hex: string, amount: number): string {
+  const key = `d:${hex}:${amount}`;
+  let c = colorCache.get(key);
+  if (c) return c;
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  c = `rgb(${(r * (1 - amount)) | 0},${(g * (1 - amount)) | 0},${(b * (1 - amount)) | 0})`;
+  colorCache.set(key, c);
+  return c;
+}
+
+function lighten(hex: string, amount: number): string {
+  const key = `l:${hex}:${amount}`;
+  let c = colorCache.get(key);
+  if (c) return c;
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  c = `rgb(${Math.min(255, (r * (1 + amount)) | 0)},${Math.min(255, (g * (1 + amount)) | 0)},${Math.min(255, (b * (1 + amount)) | 0)})`;
+  colorCache.set(key, c);
+  return c;
+}
+
+// ---- Emoji sprite cache (fillText with emoji is VERY expensive) ----
+const emojiCache = new Map<string, HTMLCanvasElement>();
+
+function getEmojiSprite(emoji: string, size: number): HTMLCanvasElement {
+  const key = `${emoji}:${size}`;
+  let cached = emojiCache.get(key);
+  if (cached) return cached;
+  const off = document.createElement('canvas');
+  off.width = size * 2;
+  off.height = size * 2;
+  const octx = off.getContext('2d')!;
+  octx.font = `${size}px sans-serif`;
+  octx.textAlign = 'center';
+  octx.textBaseline = 'middle';
+  octx.fillText(emoji, size, size);
+  emojiCache.set(key, off);
+  return off;
+}
+
+function drawEmoji(ctx: CanvasRenderingContext2D, emoji: string, x: number, y: number, size: number) {
+  const sprite = getEmojiSprite(emoji, size);
+  ctx.drawImage(sprite, x - size, y - size, size * 2, size * 2);
+}
+
 export function toIso(x: number, y: number): { sx: number; sy: number } {
   return {
     sx: (x - y) * HALF_W,
@@ -62,25 +113,33 @@ export function renderMap(
   const minTileY = Math.max(0, Math.floor(Math.min(topLeft.y, topRight.y)) - 2);
   const maxTileY = Math.min(height - 1, Math.ceil(Math.max(botLeft.y, botRight.y)) + 2);
 
+  // Set shared stroke state once
+  const isDungeon = mapId === 'dungeon' || mapId === 'blueDungeon';
+  ctx.lineWidth = 0.5;
+  const tileStroke = isDungeon ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.15)';
+
   for (let y = minTileY; y <= maxTileY; y++) {
     for (let x = minTileX; x <= maxTileX; x++) {
       const tile = tiles[y]?.[x] ?? 0;
       if (tile === 0) continue;
       const { sx, sy } = toIso(x, y);
       if (sx < viewLeft || sx > viewRight || sy < viewTop || sy > viewBottom) continue;
-      renderTile(ctx, sx, sy, tile, x, y, mapId);
+      renderTile(ctx, sx, sy, tile, x, y, mapId, isDungeon, tileStroke);
     }
   }
 
   ctx.restore();
 }
 
-function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile: number, tileX: number, tileY: number, mapId: MapId) {
-  const isDungeon = mapId === 'dungeon' || mapId === 'blueDungeon';
+function renderTile(
+  ctx: CanvasRenderingContext2D, sx: number, sy: number, tile: number,
+  tileX: number, tileY: number, mapId: MapId, isDungeon: boolean, tileStroke: string
+) {
   const isBlue = mapId === 'blueDungeon';
   const color = isBlue ? getBlueTileColor(tile) : isDungeon ? getDungeonTileColor(tile) : getTileColor(tile);
   const height = isBlue ? getBlueBuildingHeight(tile) : isDungeon ? getDungeonBuildingHeight(tile) : getBuildingHeight(tile, tileX, tileY);
 
+  // Diamond base
   ctx.beginPath();
   ctx.moveTo(sx, sy - HALF_H);
   ctx.lineTo(sx + HALF_W, sy);
@@ -89,21 +148,21 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
   ctx.closePath();
   ctx.fillStyle = color;
   ctx.fill();
-  ctx.strokeStyle = isDungeon ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.15)';
-  ctx.lineWidth = 0.5;
+  ctx.strokeStyle = tileStroke;
   ctx.stroke();
 
-  if (!isDungeon) {
-    if (tile === TileType.ROAD) {
-      ctx.beginPath();
-      ctx.moveTo(sx - 2, sy - 2);
-      ctx.lineTo(sx + 2, sy + 2);
-      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    }
+  // Road detail (city only, skip stroke change overhead for others)
+  if (!isDungeon && tile === TileType.ROAD) {
+    ctx.beginPath();
+    ctx.moveTo(sx - 2, sy - 2);
+    ctx.lineTo(sx + 2, sy + 2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.lineWidth = 0.5;
   }
 
+  // Water effect
   if (tile === TileType.WATER) {
     ctx.fillStyle = isDungeon ? 'rgba(100,180,255,0.2)' : 'rgba(255,255,255,0.15)';
     ctx.beginPath();
@@ -117,6 +176,7 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
     }
   }
 
+  // Dungeon-specific decorations
   if (isDungeon) {
     if (tile === TileType.LAVA) {
       ctx.fillStyle = 'rgba(255,200,50,0.3)';
@@ -127,9 +187,7 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
       ctx.beginPath();
       ctx.ellipse(sx, sy, 14, 6, 0, 0, Math.PI * 2);
       ctx.fill();
-    }
-
-    if (tile === TileType.PORTAL) {
+    } else if (tile === TileType.PORTAL) {
       ctx.fillStyle = 'rgba(156,39,176,0.4)';
       ctx.beginPath();
       ctx.ellipse(sx, sy, 16, 7, 0, 0, Math.PI * 2);
@@ -138,15 +196,11 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
       ctx.beginPath();
       ctx.ellipse(sx, sy, 10, 4, 0, 0, Math.PI * 2);
       ctx.fill();
-    }
-
-    if (tile === TileType.DUNGEON_BONES) {
+    } else if (tile === TileType.DUNGEON_BONES) {
       ctx.fillStyle = 'rgba(200,200,180,0.5)';
       ctx.fillRect(sx - 3, sy - 1, 6, 2);
       ctx.fillRect(sx - 1, sy - 3, 2, 6);
-    }
-
-    if (tile === TileType.DUNGEON_MOSS) {
+    } else if (tile === TileType.DUNGEON_MOSS) {
       ctx.fillStyle = 'rgba(50,120,50,0.3)';
       ctx.beginPath();
       ctx.arc(sx - 3, sy, 3, 0, Math.PI * 2);
@@ -155,16 +209,20 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
     }
   }
 
+  // 3D building extrusion
   if (height > 0 && tile !== TileType.TREE) {
+    const darkSide1 = darken(color, 0.2);
+    const darkSide2 = darken(color, 0.35);
+    const topColor = isDungeon ? darken(color, 0.1) : lighten(color, 0.1);
+
     ctx.beginPath();
     ctx.moveTo(sx - HALF_W, sy);
     ctx.lineTo(sx, sy + HALF_H);
     ctx.lineTo(sx, sy + HALF_H - height);
     ctx.lineTo(sx - HALF_W, sy - height);
     ctx.closePath();
-    ctx.fillStyle = darken(color, 0.2);
+    ctx.fillStyle = darkSide1;
     ctx.fill();
-    ctx.stroke();
 
     ctx.beginPath();
     ctx.moveTo(sx + HALF_W, sy);
@@ -172,9 +230,8 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
     ctx.lineTo(sx, sy + HALF_H - height);
     ctx.lineTo(sx + HALF_W, sy - height);
     ctx.closePath();
-    ctx.fillStyle = darken(color, 0.35);
+    ctx.fillStyle = darkSide2;
     ctx.fill();
-    ctx.stroke();
 
     ctx.beginPath();
     ctx.moveTo(sx, sy - HALF_H - height);
@@ -182,9 +239,8 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
     ctx.lineTo(sx, sy + HALF_H - height);
     ctx.lineTo(sx - HALF_W, sy - height);
     ctx.closePath();
-    ctx.fillStyle = isDungeon ? darken(color, 0.1) : lighten(color, 0.1);
+    ctx.fillStyle = topColor;
     ctx.fill();
-    ctx.stroke();
 
     if (!isDungeon && (tile === TileType.BUILDING || tile === TileType.BUILDING_RED || tile === TileType.BUILDING_LIGHT)) {
       drawWindows(ctx, sx, sy, height, tile, tileX, tileY);
@@ -203,6 +259,7 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
     }
   }
 
+  // Trees
   if (tile === TileType.TREE && !isDungeon) {
     ctx.fillStyle = '#5c4033';
     ctx.fillRect(sx - 2, sy - 10, 4, 10);
@@ -215,6 +272,7 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
     }
   }
 
+  // Portal glow on specific buildings
   if (!isDungeon && tile === TileType.BUILDING_RED && ((tileX === 23 && tileY === 6) || (tileX === 8 && tileY === 4) || (tileX === 9 && tileY === 4))) {
     ctx.fillStyle = 'rgba(156,39,176,0.5)';
     ctx.beginPath();
@@ -226,17 +284,13 @@ function renderTile(ctx: CanvasRenderingContext2D, sx: number, sy: number, tile:
     ctx.fill();
   }
 
-  // Bow item rendering
+  // Bow item
   if (tile === TileType.BOW_ITEM) {
-    const pulse = 0.7 + Math.sin((tileX + tileY) * 0.1) * 0.3;
-    ctx.fillStyle = `rgba(255, 150, 200, ${pulse * 0.4})`;
+    ctx.fillStyle = 'rgba(255, 150, 200, 0.35)';
     ctx.beginPath();
     ctx.ellipse(sx, sy, 16, 8, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.font = '18px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('🎀', sx, sy - 4);
+    drawEmoji(ctx, '🎀', sx, sy - 4, 18);
   }
 }
 
@@ -260,10 +314,9 @@ function drawWindows(ctx: CanvasRenderingContext2D, sx: number, sy: number, heig
       const baseX = sx - HALF_W + t * HALF_W;
       const baseY = sy + t * HALF_H;
       const wy = baseY - height * (1 - rowT * 0.8) + 2;
-      const wx = baseX;
       const lit = seededRand(tileX, tileY, row * 10 + col) > 0.35;
       ctx.fillStyle = lit ? litColor : darkColor;
-      ctx.fillRect(wx - ww / 2, wy, ww, wh);
+      ctx.fillRect(baseX - ww / 2, wy, ww, wh);
     }
   }
 
@@ -274,10 +327,9 @@ function drawWindows(ctx: CanvasRenderingContext2D, sx: number, sy: number, heig
       const baseX = sx + t * HALF_W;
       const baseY = sy + HALF_H - t * HALF_H;
       const wy = baseY - height * (1 - rowT * 0.8) + 2;
-      const wx = baseX;
       const lit = seededRand(tileX + 100, tileY, row * 10 + col) > 0.35;
       ctx.fillStyle = lit ? litColor : darkColor;
-      ctx.fillRect(wx - ww / 2, wy, ww, wh);
+      ctx.fillRect(baseX - ww / 2, wy, ww, wh);
     }
   }
 }
@@ -319,20 +371,6 @@ function drawDungeonWindows(ctx: CanvasRenderingContext2D, sx: number, sy: numbe
     ctx.fillStyle = lit ? litColor : darkColor;
     ctx.fillRect(baseX - ww / 2, wy, ww, wh);
   }
-}
-
-function darken(hex: string, amount: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgb(${Math.max(0, r * (1 - amount))}, ${Math.max(0, g * (1 - amount))}, ${Math.max(0, b * (1 - amount))})`;
-}
-
-function lighten(hex: string, amount: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgb(${Math.min(255, r * (1 + amount))}, ${Math.min(255, g * (1 + amount))}, ${Math.min(255, b * (1 + amount))})`;
 }
 
 export function renderCharacter(
@@ -403,10 +441,7 @@ export function renderMika(
     ctx.strokeStyle = '#ff69b4';
     ctx.lineWidth = 2;
     ctx.stroke();
-    ctx.font = '14px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('👧', sx, sy - 12 + floatY);
+    drawEmoji(ctx, '👧', sx, sy - 12 + floatY, 14);
   }
 
   // Name label
@@ -461,10 +496,7 @@ export function renderNPCs(
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    ctx.font = '16px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(npc.icon, sx, sy - 14 + floatY);
+    drawEmoji(ctx, npc.icon, sx, sy - 14 + floatY, 16);
 
     const pulseScale = 0.8 + Math.sin(time * 0.005) * 0.2;
     ctx.font = `bold ${14 * pulseScale}px Syne, sans-serif`;
@@ -550,10 +582,7 @@ export function renderMonsters(
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    ctx.font = '14px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(m.icon, sx, sy - 11 + floatY);
+    drawEmoji(ctx, m.icon, sx, sy - 11 + floatY, 14);
 
     const hpPct = m.hp / m.maxHp;
     const barW = 18;
@@ -565,10 +594,7 @@ export function renderMonsters(
     ctx.fillStyle = hpPct > 0.5 ? '#4caf50' : hpPct > 0.25 ? '#ff9800' : '#f44336';
     ctx.fillRect(barX, barY, barW * hpPct, barH);
 
-    const pulse = 0.5 + Math.sin(time * 0.006 + m.pos.y) * 0.5;
-    ctx.fillStyle = `rgba(255, 50, 50, ${pulse * 0.6})`;
-    ctx.font = `bold 10px sans-serif`;
-    ctx.fillText('⚔', sx, sy - 30 + floatY);
+    drawEmoji(ctx, '⚔', sx, sy - 30 + floatY, 10);
   }
 
   ctx.restore();
@@ -592,19 +618,14 @@ export function renderCoins(
     if (c.collected) continue;
     const { sx, sy } = toIso(c.pos.x, c.pos.y);
     const floatY = Math.sin(time * 0.005 + c.pos.x * 2 + c.pos.y) * 3;
-    const pulse = 0.7 + Math.sin(time * 0.006 + c.pos.x) * 0.3;
 
     // Glow
-    ctx.fillStyle = `rgba(255, 215, 0, ${pulse * 0.25})`;
+    ctx.fillStyle = 'rgba(255, 215, 0, 0.2)';
     ctx.beginPath();
     ctx.ellipse(sx, sy - 6 + floatY, 10, 6, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Coin
-    ctx.font = `${12 + pulse * 3}px sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('🪙', sx, sy - 8 + floatY);
+    drawEmoji(ctx, '🪙', sx, sy - 8 + floatY, 14);
   }
 
   ctx.restore();

@@ -52,6 +52,7 @@ export default function GameCanvas() {
   const currentMapRef = useRef<MapId>('city');
 
   const [npcs, setNpcs] = useState<NPC[]>(npcData.map(n => ({ ...n })));
+  const npcsRef = useRef<NPC[]>(npcs);
   const [currentDialogue, setCurrentDialogue] = useState<DialogueNode | null>(null);
   const [activeNpc, setActiveNpc] = useState<NPC | null>(null);
   const [questLog, setQuestLog] = useState<QuestEntry[]>([
@@ -132,6 +133,7 @@ export default function GameCanvas() {
 
   // Keep playerStats ref in sync
   useEffect(() => { playerStatsRef.current = playerStats; }, [playerStats]);
+  useEffect(() => { npcsRef.current = npcs; }, [npcs]);
 
   useEffect(() => {
     const img = new Image();
@@ -594,7 +596,7 @@ export default function GameCanvas() {
 
     const zoom = zoomRef.current;
     const worldX = (canvasX - canvas.width / 2) / zoom + cameraRef.current.x;
-    const worldY = (canvasY - canvas.height / 3) / zoom + cameraRef.current.y;
+    const worldY = (canvasY - canvas.height * 0.4) / zoom + cameraRef.current.y;
 
     const tile = fromIso(worldX, worldY);
     const tileX = Math.floor(tile.x);
@@ -1064,7 +1066,7 @@ export default function GameCanvas() {
       renderPathPreview(ctx, pathRef.current.slice(pathIndexRef.current), cameraRef.current, canvas.width, canvas.height, zoom, time);
       
       if (mapId === 'city') {
-        renderNPCs(ctx, npcs, cameraRef.current, canvas.width, canvas.height, zoom, time);
+        renderNPCs(ctx, npcsRef.current, cameraRef.current, canvas.width, canvas.height, zoom, time);
       }
       
       if (mapId === 'dungeon') {
@@ -1089,7 +1091,7 @@ export default function GameCanvas() {
       cancelAnimationFrame(animRef.current);
       window.removeEventListener('resize', resize);
     };
-  }, [npcs, currentMap, updateMonsterAI, checkCoinPickup]);
+  }, [updateMonsterAI, checkCoinPickup]);
 
   // Pinch zoom
   useEffect(() => {
