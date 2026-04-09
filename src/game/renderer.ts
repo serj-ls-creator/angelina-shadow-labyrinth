@@ -41,12 +41,12 @@ export function renderMap(
   const { tiles, width, height } = getMapData(mapId);
 
   ctx.save();
-  ctx.translate(canvasW / 2, canvasH / 3);
+  ctx.translate(canvasW / 2, canvasH * 0.4);
   ctx.scale(zoom, zoom);
   ctx.translate(-camera.x, -camera.y);
 
   const halfW = (canvasW / 2) / zoom;
-  const halfH = (canvasH / 3) / zoom;
+  const halfH = (canvasH * 0.4) / zoom;
   const viewLeft = camera.x - halfW - TILE_SIZE;
   const viewRight = camera.x + halfW + TILE_SIZE;
   const viewTop = camera.y - halfH - 60;
@@ -345,7 +345,7 @@ export function renderCharacter(
   charImage: HTMLImageElement | null
 ) {
   ctx.save();
-  ctx.translate(canvasW / 2, canvasH / 3);
+  ctx.translate(canvasW / 2, canvasH * 0.4);
   ctx.scale(zoom, zoom);
   ctx.translate(-camera.x, -camera.y);
 
@@ -378,7 +378,7 @@ export function renderMika(
   time: number
 ) {
   ctx.save();
-  ctx.translate(canvasW / 2, canvasH / 3);
+  ctx.translate(canvasW / 2, canvasH * 0.4);
   ctx.scale(zoom, zoom);
   ctx.translate(-camera.x, -camera.y);
 
@@ -440,7 +440,7 @@ export function renderNPCs(
   time: number
 ) {
   ctx.save();
-  ctx.translate(canvasW / 2, canvasH / 3);
+  ctx.translate(canvasW / 2, canvasH * 0.4);
   ctx.scale(zoom, zoom);
   ctx.translate(-camera.x, -camera.y);
 
@@ -490,7 +490,7 @@ export function renderPathPreview(
   if (path.length < 2) return;
 
   ctx.save();
-  ctx.translate(canvasW / 2, canvasH / 3);
+  ctx.translate(canvasW / 2, canvasH * 0.4);
   ctx.scale(zoom, zoom);
   ctx.translate(-camera.x, -camera.y);
 
@@ -529,7 +529,7 @@ export function renderMonsters(
   time: number
 ) {
   ctx.save();
-  ctx.translate(canvasW / 2, canvasH / 3);
+  ctx.translate(canvasW / 2, canvasH * 0.4);
   ctx.scale(zoom, zoom);
   ctx.translate(-camera.x, -camera.y);
 
@@ -584,7 +584,7 @@ export function renderCoins(
   time: number
 ) {
   ctx.save();
-  ctx.translate(canvasW / 2, canvasH / 3);
+  ctx.translate(canvasW / 2, canvasH * 0.4);
   ctx.scale(zoom, zoom);
   ctx.translate(-camera.x, -camera.y);
 
