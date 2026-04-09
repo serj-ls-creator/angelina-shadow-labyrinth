@@ -2,6 +2,31 @@ import { Position, TileType, MapId } from './types';
 import { mapTiles, MAP_WIDTH, MAP_HEIGHT, TILE_SIZE, getTileColor, getBuildingHeight } from './mapData';
 import { dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, getDungeonTileColor, getDungeonBuildingHeight } from './dungeonMapData';
 import { blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, getBlueTileColor, getBlueBuildingHeight } from './blueDungeonMapData';
+import skeletonSrc from '@/assets/monster-skeleton.png';
+import slimeSrc from '@/assets/monster-slime.png';
+import demonSrc from '@/assets/monster-demon.png';
+import golemSrc from '@/assets/monster-golem.png';
+import ghostSrc from '@/assets/monster-ghost.png';
+
+// ---- Monster image cache ----
+const monsterImages: Record<string, HTMLImageElement> = {};
+const monsterSrcMap: Record<string, string> = {
+  skeleton: skeletonSrc,
+  slime: slimeSrc,
+  demon: demonSrc,
+  golem: golemSrc,
+  ghost: ghostSrc,
+};
+
+function getMonsterImage(type: string): HTMLImageElement | null {
+  if (monsterImages[type]?.complete) return monsterImages[type];
+  if (!monsterImages[type] && monsterSrcMap[type]) {
+    const img = new Image();
+    img.src = monsterSrcMap[type];
+    monsterImages[type] = img;
+  }
+  return null;
+}
 
 const HALF_W = TILE_SIZE / 2;
 const HALF_H = TILE_SIZE / 4;
