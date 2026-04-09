@@ -2,6 +2,31 @@ import { Position, TileType, MapId } from './types';
 import { mapTiles, MAP_WIDTH, MAP_HEIGHT, TILE_SIZE, getTileColor, getBuildingHeight } from './mapData';
 import { dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, getDungeonTileColor, getDungeonBuildingHeight } from './dungeonMapData';
 import { blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, getBlueTileColor, getBlueBuildingHeight } from './blueDungeonMapData';
+import skeletonSrc from '@/assets/monster-skeleton.png';
+import slimeSrc from '@/assets/monster-slime.png';
+import demonSrc from '@/assets/monster-demon.png';
+import golemSrc from '@/assets/monster-golem.png';
+import ghostSrc from '@/assets/monster-ghost.png';
+
+// ---- Monster image cache ----
+const monsterImages: Record<string, HTMLImageElement> = {};
+const monsterSrcMap: Record<string, string> = {
+  skeleton: skeletonSrc,
+  slime: slimeSrc,
+  demon: demonSrc,
+  golem: golemSrc,
+  ghost: ghostSrc,
+};
+
+function getMonsterImage(type: string): HTMLImageElement | null {
+  if (monsterImages[type]?.complete) return monsterImages[type];
+  if (!monsterImages[type] && monsterSrcMap[type]) {
+    const img = new Image();
+    img.src = monsterSrcMap[type];
+    monsterImages[type] = img;
+  }
+  return null;
+}
 
 const HALF_W = TILE_SIZE / 2;
 const HALF_H = TILE_SIZE / 4;
@@ -553,7 +578,7 @@ export function renderPathPreview(
 
 export function renderMonsters(
   ctx: CanvasRenderingContext2D,
-  monsters: { pos: Position; icon: string; name: string; hp: number; maxHp: number }[],
+  monsters: { pos: Position; icon: string; name: string; hp: number; maxHp: number; type?: string }[],
   camera: Position,
   canvasW: number,
   canvasH: number,
@@ -569,32 +594,40 @@ export function renderMonsters(
     const { sx, sy } = toIso(m.pos.x, m.pos.y);
     const floatY = Math.sin(time * 0.004 + m.pos.x * 3) * 2;
 
+    // Shadow
     ctx.beginPath();
-    ctx.ellipse(sx, sy + 2, 8, 3, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.ellipse(sx, sy + 2, 10, 4, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.fill();
 
-    ctx.beginPath();
-    ctx.arc(sx, sy - 12 + floatY, 12, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(40, 10, 10, 0.9)';
-    ctx.fill();
-    ctx.strokeStyle = 'hsla(0, 80%, 50%, 0.6)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    // Try to render monster image
+    const monsterType = (m as any).type || '';
+    const img = getMonsterImage(monsterType);
+    if (img) {
+      const size = 38;
+      ctx.drawImage(img, sx - size / 2, sy - size + 5 + floatY, size, size);
+    } else {
+      // Fallback to circle + emoji
+      ctx.beginPath();
+      ctx.arc(sx, sy - 12 + floatY, 12, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(40, 10, 10, 0.9)';
+      ctx.fill();
+      ctx.strokeStyle = 'hsla(0, 80%, 50%, 0.6)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      drawEmoji(ctx, m.icon, sx, sy - 11 + floatY, 14);
+    }
 
-    drawEmoji(ctx, m.icon, sx, sy - 11 + floatY, 14);
-
+    // HP bar
     const hpPct = m.hp / m.maxHp;
-    const barW = 18;
+    const barW = 20;
     const barH = 3;
     const barX = sx - barW / 2;
-    const barY = sy - 26 + floatY;
+    const barY = sy - 30 + floatY;
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(barX, barY, barW, barH);
     ctx.fillStyle = hpPct > 0.5 ? '#4caf50' : hpPct > 0.25 ? '#ff9800' : '#f44336';
     ctx.fillRect(barX, barY, barW * hpPct, barH);
-
-    drawEmoji(ctx, '⚔', sx, sy - 30 + floatY, 10);
   }
 
   ctx.restore();
