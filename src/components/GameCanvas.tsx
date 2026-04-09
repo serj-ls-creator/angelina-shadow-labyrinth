@@ -133,6 +133,7 @@ export default function GameCanvas() {
 
   // Keep playerStats ref in sync
   useEffect(() => { playerStatsRef.current = playerStats; }, [playerStats]);
+  useEffect(() => { npcsRef.current = npcs; }, [npcs]);
 
   useEffect(() => {
     const img = new Image();
