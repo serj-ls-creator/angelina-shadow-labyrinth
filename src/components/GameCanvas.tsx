@@ -52,6 +52,7 @@ export default function GameCanvas() {
   const currentMapRef = useRef<MapId>('city');
 
   const [npcs, setNpcs] = useState<NPC[]>(npcData.map(n => ({ ...n })));
+  const npcsRef = useRef<NPC[]>(npcs);
   const [currentDialogue, setCurrentDialogue] = useState<DialogueNode | null>(null);
   const [activeNpc, setActiveNpc] = useState<NPC | null>(null);
   const [questLog, setQuestLog] = useState<QuestEntry[]>([
