@@ -116,6 +116,15 @@ export default function GameCanvas() {
     return inventory.some(i => i.itemId === itemId);
   }, [inventory]);
 
+  // Check if water shoes are equipped
+  const hasWaterWalk = equipped.shoes === 'watershoes';
+
+  // Enhanced walkable function that accounts for water shoes
+  const getEnhancedWalkable = useCallback((baseWalkable: (tile: number) => boolean) => {
+    if (!hasWaterWalk) return baseWalkable;
+    return (tile: number) => baseWalkable(tile) || tile === TileType.WATER;
+  }, [hasWaterWalk]);
+
   const hasActiveEffect = useCallback((effectType: string) => {
     return activeEffects.some(e => e.type === effectType && e.endsAt > Date.now());
   }, [activeEffects]);
