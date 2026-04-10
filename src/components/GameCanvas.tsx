@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Position, MapId } from '../game/types';
 import { findPath } from '../game/pathfinding';
-import { renderMap, renderCharacter, renderNPCs, renderPathPreview, renderMonsters, renderMika, renderCoins, toIso, fromIso } from '../game/renderer';
+import { renderMap, renderCharacter, renderNPCs, renderPathPreview, renderMonsters, renderMika, renderCoins, toIso, fromIso, preloadCharDirections, getCharDirection, CharDirection } from '../game/renderer';
 import { npcs as npcData } from '../game/dialogueData';
 import { NPC, DialogueNode, QuestEntry } from '../game/types';
 import { dialogues } from '../game/dialogueData';
@@ -47,6 +47,7 @@ export default function GameCanvas() {
   const pathIndexRef = useRef(0);
   const cameraRef = useRef<Position>({ x: 0, y: 0 });
   const zoomRef = useRef(0.7);
+  const charDirRef = useRef<CharDirection>('front');
 
   const [currentMap, setCurrentMap] = useState<MapId>('city');
   const currentMapRef = useRef<MapId>('city');
@@ -142,6 +143,7 @@ export default function GameCanvas() {
     const mikaImg = new Image();
     mikaImg.src = mikaSrc;
     mikaImg.onload = () => { mikaImgRef.current = mikaImg; };
+    preloadCharDirections();
   }, []);
 
   useEffect(() => {
