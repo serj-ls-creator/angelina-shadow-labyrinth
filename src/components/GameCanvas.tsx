@@ -1087,7 +1087,7 @@ export default function GameCanvas() {
         renderMonsters(ctx, aliveMonsters, cameraRef.current, canvas.width, canvas.height, zoom, time);
       }
       
-      renderCharacter(ctx, playerRef.current, cameraRef.current, canvas.width, canvas.height, zoom, charImgRef.current);
+      renderCharacter(ctx, playerRef.current, cameraRef.current, canvas.width, canvas.height, zoom, charImgRef.current, charDirRef.current);
 
       animRef.current = requestAnimationFrame(loop);
     };
@@ -1197,21 +1197,19 @@ export default function GameCanvas() {
         </div>
       </div>
 
-      <MiniMap
-        playerPos={playerPosState}
-        npcs={currentMap === 'city' ? npcs : []}
-        mapTiles={mapData.tiles}
-        mapWidth={mapData.width}
-        mapHeight={mapData.height}
-        isDungeon={currentMap === 'dungeon' || currentMap === 'blueDungeon'}
-      />
-
-      {/* Start button under minimap */}
-      <div className="fixed z-40" style={{ top: (currentMap === 'dungeon' || currentMap === 'blueDungeon') ? '220px' : '170px', left: '12px' }}>
+      <div className="fixed z-40" style={{ bottom: '16px', left: '12px' }}>
+        <MiniMap
+          playerPos={playerPosState}
+          npcs={currentMap === 'city' ? npcs : []}
+          mapTiles={mapData.tiles}
+          mapWidth={mapData.width}
+          mapHeight={mapData.height}
+          isDungeon={currentMap === 'dungeon' || currentMap === 'blueDungeon'}
+        />
         <button
           onClick={handleRestart}
           className="glass-panel px-3 py-1.5 text-xs font-display font-bold text-primary 
-                     hover:bg-primary/20 active:scale-95 transition-all border border-primary/30"
+                     hover:bg-primary/20 active:scale-95 transition-all border border-primary/30 mt-1 w-full"
         >
           🔄 Start
         </button>
