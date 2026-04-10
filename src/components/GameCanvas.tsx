@@ -990,6 +990,11 @@ export default function GameCanvas() {
         const dy = target.y - playerRef.current.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
+        // Track direction
+        if (dist > 0.01) {
+          charDirRef.current = getCharDirection(dx, dy);
+        }
+
         if (dist < 0.15) {
           playerRef.current = { ...target };
           pathIndexRef.current++;
