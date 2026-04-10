@@ -7,6 +7,43 @@ import slimeSrc from '@/assets/monster-slime.png';
 import demonSrc from '@/assets/monster-demon.png';
 import golemSrc from '@/assets/monster-golem.png';
 import ghostSrc from '@/assets/monster-ghost.png';
+import charFrontSrc from '@/assets/character-front.png';
+import charBackSrc from '@/assets/character-back.png';
+import charLeftSrc from '@/assets/character-left.png';
+import charRightSrc from '@/assets/character-right.png';
+
+// ---- Directional character image cache ----
+export type CharDirection = 'front' | 'back' | 'left' | 'right';
+const charDirImages: Record<CharDirection, HTMLImageElement | null> = {
+  front: null, back: null, left: null, right: null,
+};
+const charDirSrcMap: Record<CharDirection, string> = {
+  front: charFrontSrc,
+  back: charBackSrc,
+  left: charLeftSrc,
+  right: charRightSrc,
+};
+
+export function preloadCharDirections() {
+  for (const dir of Object.keys(charDirSrcMap) as CharDirection[]) {
+    if (!charDirImages[dir]) {
+      const img = new Image();
+      img.src = charDirSrcMap[dir];
+      charDirImages[dir] = img;
+    }
+  }
+}
+
+// Determine direction from movement delta (isometric)
+export function getCharDirection(dx: number, dy: number): CharDirection {
+  if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) return 'front';
+  // In isometric: moving +y = down-right, -y = up-left, +x = down-left... 
+  // We simplify: primary axis
+  if (Math.abs(dy) > Math.abs(dx)) {
+    return dy > 0 ? 'front' : 'back';
+  }
+  return dx > 0 ? 'right' : 'left';
+}
 
 // ---- Monster image cache ----
 const monsterImages: Record<string, HTMLImageElement> = {};
@@ -405,7 +442,8 @@ export function renderCharacter(
   canvasW: number,
   canvasH: number,
   zoom: number,
-  charImage: HTMLImageElement | null
+  charImage: HTMLImageElement | null,
+  direction: CharDirection = 'front'
 ) {
   ctx.save();
   ctx.translate(canvasW / 2, canvasH * 0.4);
@@ -414,7 +452,12 @@ export function renderCharacter(
 
   const { sx, sy } = toIso(pos.x, pos.y);
 
-  if (charImage && charImage.complete) {
+  // Try directional sprite first
+  const dirImg = charDirImages[direction];
+  if (dirImg && dirImg.complete) {
+    const size = 40;
+    ctx.drawImage(dirImg, sx - size / 2, sy - size + 5, size, size);
+  } else if (charImage && charImage.complete) {
     const size = 40;
     ctx.drawImage(charImage, sx - size / 2, sy - size + 5, size, size);
   } else {

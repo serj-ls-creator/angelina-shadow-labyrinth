@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Position, MapId } from '../game/types';
 import { findPath } from '../game/pathfinding';
-import { renderMap, renderCharacter, renderNPCs, renderPathPreview, renderMonsters, renderMika, renderCoins, toIso, fromIso } from '../game/renderer';
+import { renderMap, renderCharacter, renderNPCs, renderPathPreview, renderMonsters, renderMika, renderCoins, toIso, fromIso, preloadCharDirections, getCharDirection, CharDirection } from '../game/renderer';
 import { npcs as npcData } from '../game/dialogueData';
 import { NPC, DialogueNode, QuestEntry } from '../game/types';
 import { dialogues } from '../game/dialogueData';
@@ -47,6 +47,7 @@ export default function GameCanvas() {
   const pathIndexRef = useRef(0);
   const cameraRef = useRef<Position>({ x: 0, y: 0 });
   const zoomRef = useRef(0.7);
+  const charDirRef = useRef<CharDirection>('front');
 
   const [currentMap, setCurrentMap] = useState<MapId>('city');
   const currentMapRef = useRef<MapId>('city');
@@ -115,6 +116,15 @@ export default function GameCanvas() {
     return inventory.some(i => i.itemId === itemId);
   }, [inventory]);
 
+  // Check if water shoes are equipped
+  const hasWaterWalk = equipped.shoes === 'watershoes';
+
+  // Enhanced walkable function that accounts for water shoes
+  const getEnhancedWalkable = useCallback((baseWalkable: (tile: number) => boolean) => {
+    if (!hasWaterWalk) return baseWalkable;
+    return (tile: number) => baseWalkable(tile) || tile === TileType.WATER;
+  }, [hasWaterWalk]);
+
   const hasActiveEffect = useCallback((effectType: string) => {
     return activeEffects.some(e => e.type === effectType && e.endsAt > Date.now());
   }, [activeEffects]);
@@ -142,6 +152,7 @@ export default function GameCanvas() {
     const mikaImg = new Image();
     mikaImg.src = mikaSrc;
     mikaImg.onload = () => { mikaImgRef.current = mikaImg; };
+    preloadCharDirections();
   }, []);
 
   useEffect(() => {
@@ -603,6 +614,7 @@ export default function GameCanvas() {
     const tileY = Math.floor(tile.y);
 
     const mapData = getCurrentMapData(currentMapRef.current);
+    const walkFn = getEnhancedWalkable(mapData.isWalkable);
 
     // Check portal interaction
     const portal = findPortalNearby(currentMapRef.current, { x: tileX, y: tileY }, 2);
@@ -610,7 +622,7 @@ export default function GameCanvas() {
       const path = findPath(
         { x: Math.round(playerRef.current.x), y: Math.round(playerRef.current.y) },
         { x: Math.round(portal.tilePos.x), y: Math.round(portal.tilePos.y) },
-        mapData.tiles, mapData.width, mapData.height, mapData.isWalkable
+        mapData.tiles, mapData.width, mapData.height, walkFn
       );
       if (path.length > 1) {
         const walkPath = path.slice(1);
@@ -635,7 +647,7 @@ export default function GameCanvas() {
         const path = findPath(
           { x: Math.round(playerRef.current.x), y: Math.round(playerRef.current.y) },
           { x: Math.round(mika.x), y: Math.round(mika.y) },
-          mapData.tiles, mapData.width, mapData.height, mapData.isWalkable
+          mapData.tiles, mapData.width, mapData.height, walkFn
         );
         if (path.length > 1) {
           const walkPath = path.slice(1);
@@ -670,7 +682,7 @@ export default function GameCanvas() {
           const path = findPath(
             { x: Math.round(playerRef.current.x), y: Math.round(playerRef.current.y) },
             { x: Math.round(monster.pos.x), y: Math.round(monster.pos.y) },
-            mapData.tiles, mapData.width, mapData.height, mapData.isWalkable
+            mapData.tiles, mapData.width, mapData.height, walkFn
           );
           if (path.length > 1) {
             const walkPath = path.slice(1);
@@ -696,7 +708,7 @@ export default function GameCanvas() {
           const path = findPath(
             { x: Math.round(playerRef.current.x), y: Math.round(playerRef.current.y) },
             { x: Math.round(npc.pos.x), y: Math.round(npc.pos.y) },
-            mapData.tiles, mapData.width, mapData.height, mapData.isWalkable
+            mapData.tiles, mapData.width, mapData.height, walkFn
           );
           if (path.length > 0) {
             if (path.length > 1) path.pop();
@@ -718,11 +730,11 @@ export default function GameCanvas() {
     }
 
     // Normal movement
-    if (tileX >= 0 && tileX < mapData.width && tileY >= 0 && tileY < mapData.height && mapData.isWalkable(mapData.tiles[tileY]?.[tileX])) {
+    if (tileX >= 0 && tileX < mapData.width && tileY >= 0 && tileY < mapData.height && walkFn(mapData.tiles[tileY]?.[tileX])) {
       const path = findPath(
         { x: Math.round(playerRef.current.x), y: Math.round(playerRef.current.y) },
         { x: tileX, y: tileY },
-        mapData.tiles, mapData.width, mapData.height, mapData.isWalkable
+        mapData.tiles, mapData.width, mapData.height, walkFn
       );
       if (path.length > 0) {
         const walkPath = path.slice(1);
@@ -732,7 +744,7 @@ export default function GameCanvas() {
         targetRef.current = walkPath[walkPath.length - 1];
       }
     }
-  }, [currentDialogue, npcs, transitioning, switchMap, startCombat, combat.active, gameWon, startDialogue, showShop, showInventory]);
+  }, [currentDialogue, npcs, transitioning, switchMap, startCombat, combat.active, gameWon, startDialogue, showShop, showInventory, getEnhancedWalkable]);
 
   const handleDialogueResponse = useCallback((nextId: string) => {
     const next = dialogues[nextId];
@@ -988,6 +1000,11 @@ export default function GameCanvas() {
         const dy = target.y - playerRef.current.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
+        // Track direction
+        if (dist > 0.01) {
+          charDirRef.current = getCharDirection(dx, dy);
+        }
+
         if (dist < 0.15) {
           playerRef.current = { ...target };
           pathIndexRef.current++;
@@ -1080,7 +1097,7 @@ export default function GameCanvas() {
         renderMonsters(ctx, aliveMonsters, cameraRef.current, canvas.width, canvas.height, zoom, time);
       }
       
-      renderCharacter(ctx, playerRef.current, cameraRef.current, canvas.width, canvas.height, zoom, charImgRef.current);
+      renderCharacter(ctx, playerRef.current, cameraRef.current, canvas.width, canvas.height, zoom, charImgRef.current, charDirRef.current);
 
       animRef.current = requestAnimationFrame(loop);
     };
@@ -1190,21 +1207,19 @@ export default function GameCanvas() {
         </div>
       </div>
 
-      <MiniMap
-        playerPos={playerPosState}
-        npcs={currentMap === 'city' ? npcs : []}
-        mapTiles={mapData.tiles}
-        mapWidth={mapData.width}
-        mapHeight={mapData.height}
-        isDungeon={currentMap === 'dungeon' || currentMap === 'blueDungeon'}
-      />
-
-      {/* Start button under minimap */}
-      <div className="fixed z-40" style={{ top: (currentMap === 'dungeon' || currentMap === 'blueDungeon') ? '220px' : '170px', left: '12px' }}>
+      <div className="fixed z-40" style={{ bottom: '16px', left: '12px' }}>
+        <MiniMap
+          playerPos={playerPosState}
+          npcs={currentMap === 'city' ? npcs : []}
+          mapTiles={mapData.tiles}
+          mapWidth={mapData.width}
+          mapHeight={mapData.height}
+          isDungeon={currentMap === 'dungeon' || currentMap === 'blueDungeon'}
+        />
         <button
           onClick={handleRestart}
           className="glass-panel px-3 py-1.5 text-xs font-display font-bold text-primary 
-                     hover:bg-primary/20 active:scale-95 transition-all border border-primary/30"
+                     hover:bg-primary/20 active:scale-95 transition-all border border-primary/30 mt-1 w-full"
         >
           🔄 Start
         </button>
