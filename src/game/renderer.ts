@@ -641,35 +641,41 @@ export function renderMonsters(
 
     // Shadow
     ctx.beginPath();
-    ctx.ellipse(sx, sy + 2, 10, 4, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.ellipse(sx, sy + 2, isBoss ? 16 : 10, isBoss ? 6 : 4, 0, 0, Math.PI * 2);
+    ctx.fillStyle = isBoss ? 'rgba(100,0,200,0.4)' : 'rgba(0,0,0,0.35)';
     ctx.fill();
 
-    // Try to render monster image
-    const monsterType = (m as any).type || '';
-    const img = getMonsterImage(monsterType);
-    const isBoss = monsterType === 'boss';
     if (img) {
       const size = isBoss ? 52 : 38;
       ctx.drawImage(img, sx - size / 2, sy - size + 5 + floatY, size, size);
     } else {
-      // Fallback to circle + emoji
       ctx.beginPath();
-      ctx.arc(sx, sy - 12 + floatY, 12, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(40, 10, 10, 0.9)';
+      ctx.arc(sx, sy - 12 + floatY, isBoss ? 16 : 12, 0, Math.PI * 2);
+      ctx.fillStyle = isBoss ? 'rgba(80, 0, 120, 0.9)' : 'rgba(40, 10, 10, 0.9)';
       ctx.fill();
-      ctx.strokeStyle = 'hsla(0, 80%, 50%, 0.6)';
+      ctx.strokeStyle = isBoss ? 'hsla(280, 80%, 60%, 0.8)' : 'hsla(0, 80%, 50%, 0.6)';
       ctx.lineWidth = 2;
       ctx.stroke();
-      drawEmoji(ctx, m.icon, sx, sy - 11 + floatY, 14);
+      drawEmoji(ctx, m.icon, sx, sy - 11 + floatY, isBoss ? 18 : 14);
+    }
+
+    // Boss name label
+    if (isBoss) {
+      ctx.font = 'bold 8px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#e040fb';
+      ctx.shadowColor = 'rgba(200, 0, 255, 0.8)';
+      ctx.shadowBlur = 6;
+      ctx.fillText('👑 ' + m.name, sx, sy - 42 + floatY);
+      ctx.shadowBlur = 0;
     }
 
     // HP bar
     const hpPct = m.hp / m.maxHp;
-    const barW = 20;
-    const barH = 3;
+    const barW = isBoss ? 30 : 20;
+    const barH = isBoss ? 4 : 3;
     const barX = sx - barW / 2;
-    const barY = sy - 30 + floatY;
+    const barY = sy - (isBoss ? 36 : 30) + floatY;
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
     ctx.fillRect(barX, barY, barW, barH);
     ctx.fillStyle = hpPct > 0.5 ? '#4caf50' : hpPct > 0.25 ? '#ff9800' : '#f44336';
