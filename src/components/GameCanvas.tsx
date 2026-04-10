@@ -614,6 +614,7 @@ export default function GameCanvas() {
     const tileY = Math.floor(tile.y);
 
     const mapData = getCurrentMapData(currentMapRef.current);
+    const walkFn = getEnhancedWalkable(mapData.isWalkable);
 
     // Check portal interaction
     const portal = findPortalNearby(currentMapRef.current, { x: tileX, y: tileY }, 2);
@@ -621,7 +622,7 @@ export default function GameCanvas() {
       const path = findPath(
         { x: Math.round(playerRef.current.x), y: Math.round(playerRef.current.y) },
         { x: Math.round(portal.tilePos.x), y: Math.round(portal.tilePos.y) },
-        mapData.tiles, mapData.width, mapData.height, mapData.isWalkable
+        mapData.tiles, mapData.width, mapData.height, walkFn
       );
       if (path.length > 1) {
         const walkPath = path.slice(1);
@@ -646,7 +647,7 @@ export default function GameCanvas() {
         const path = findPath(
           { x: Math.round(playerRef.current.x), y: Math.round(playerRef.current.y) },
           { x: Math.round(mika.x), y: Math.round(mika.y) },
-          mapData.tiles, mapData.width, mapData.height, mapData.isWalkable
+          mapData.tiles, mapData.width, mapData.height, walkFn
         );
         if (path.length > 1) {
           const walkPath = path.slice(1);
@@ -681,7 +682,7 @@ export default function GameCanvas() {
           const path = findPath(
             { x: Math.round(playerRef.current.x), y: Math.round(playerRef.current.y) },
             { x: Math.round(monster.pos.x), y: Math.round(monster.pos.y) },
-            mapData.tiles, mapData.width, mapData.height, mapData.isWalkable
+            mapData.tiles, mapData.width, mapData.height, walkFn
           );
           if (path.length > 1) {
             const walkPath = path.slice(1);
@@ -707,7 +708,7 @@ export default function GameCanvas() {
           const path = findPath(
             { x: Math.round(playerRef.current.x), y: Math.round(playerRef.current.y) },
             { x: Math.round(npc.pos.x), y: Math.round(npc.pos.y) },
-            mapData.tiles, mapData.width, mapData.height, mapData.isWalkable
+            mapData.tiles, mapData.width, mapData.height, walkFn
           );
           if (path.length > 0) {
             if (path.length > 1) path.pop();
@@ -729,11 +730,11 @@ export default function GameCanvas() {
     }
 
     // Normal movement
-    if (tileX >= 0 && tileX < mapData.width && tileY >= 0 && tileY < mapData.height && mapData.isWalkable(mapData.tiles[tileY]?.[tileX])) {
+    if (tileX >= 0 && tileX < mapData.width && tileY >= 0 && tileY < mapData.height && walkFn(mapData.tiles[tileY]?.[tileX])) {
       const path = findPath(
         { x: Math.round(playerRef.current.x), y: Math.round(playerRef.current.y) },
         { x: tileX, y: tileY },
-        mapData.tiles, mapData.width, mapData.height, mapData.isWalkable
+        mapData.tiles, mapData.width, mapData.height, walkFn
       );
       if (path.length > 0) {
         const walkPath = path.slice(1);
