@@ -639,6 +639,10 @@ export function renderMonsters(
     const { sx, sy } = toIso(m.pos.x, m.pos.y);
     const floatY = Math.sin(time * 0.004 + m.pos.x * 3) * 2;
 
+    const monsterType = (m as any).type || '';
+    const img = getMonsterImage(monsterType);
+    const isBoss = monsterType === 'boss';
+
     // Shadow
     ctx.beginPath();
     ctx.ellipse(sx, sy + 2, isBoss ? 16 : 10, isBoss ? 6 : 4, 0, 0, Math.PI * 2);
