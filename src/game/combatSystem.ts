@@ -12,7 +12,8 @@ export interface Monster {
   attack: number;
   defense: number;
   xpReward: number;
-  type: 'skeleton' | 'slime' | 'demon' | 'golem' | 'ghost';
+  type: 'skeleton' | 'slime' | 'demon' | 'golem' | 'ghost' | 'boss';
+  isBoss?: boolean;
   isAlive: boolean;
   // AI state
   state: 'patrol' | 'chase';
@@ -44,6 +45,7 @@ const MONSTER_TEMPLATES: Record<string, Omit<Monster, 'id' | 'pos' | 'isAlive' |
   demon: { name: 'Демон', icon: '👹', hp: 28, maxHp: 28, attack: 6, defense: 4, xpReward: 30, type: 'demon' },
   golem: { name: 'Голем', icon: '🗿', hp: 34, maxHp: 34, attack: 6, defense: 6, xpReward: 25, type: 'golem' },
   ghost: { name: 'Привид', icon: '👻', hp: 14, maxHp: 14, attack: 4, defense: 2, xpReward: 12, type: 'ghost' },
+  boss: { name: 'Страж Тіней', icon: '👑', hp: 51, maxHp: 51, attack: 9, defense: 9, xpReward: 60, type: 'boss' },
 };
 
 function seededRand(seed: number): () => number {
@@ -55,7 +57,33 @@ function seededRand(seed: number): () => number {
 }
 
 export function generateDungeonMonsters(): Monster[] {
-  return generateMonstersForMap(dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, isDungeonWalkable, 77777, 'monster');
+  const monsters = generateMonstersForMap(dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, isDungeonWalkable, 77777, 'monster');
+  // Add boss near Mika (farthest point)
+  const mikaPos = findFarthestPoint();
+  // Find a walkable tile 2-3 steps closer to portal from Mika
+  let bossPos: Position = { x: mikaPos.x - 2, y: mikaPos.y - 2 };
+  for (let d = 2; d <= 5; d++) {
+    for (const [dx, dy] of [[-d, 0], [0, -d], [-d, -d], [d, 0], [0, d]]) {
+      const nx = mikaPos.x + dx, ny = mikaPos.y + dy;
+      if (nx >= 0 && nx < DUNGEON_WIDTH && ny >= 0 && ny < DUNGEON_HEIGHT && isDungeonWalkable(dungeonTiles[ny]?.[nx])) {
+        bossPos = { x: nx, y: ny };
+        break;
+      }
+    }
+    if (bossPos.x !== mikaPos.x - 2) break;
+  }
+  const bossTemplate = MONSTER_TEMPLATES.boss;
+  monsters.push({
+    id: 'boss_dungeon',
+    ...bossTemplate,
+    pos: bossPos,
+    isAlive: true,
+    isBoss: true,
+    state: 'patrol',
+    patrolTarget: null,
+    lastMoveTime: 0,
+  });
+  return monsters;
 }
 
 export function generateBlueMonsters(): Monster[] {

@@ -7,6 +7,7 @@ import slimeSrc from '@/assets/monster-slime.png';
 import demonSrc from '@/assets/monster-demon.png';
 import golemSrc from '@/assets/monster-golem.png';
 import ghostSrc from '@/assets/monster-ghost.png';
+import bossSrc from '@/assets/monster-boss.png';
 import charFrontSrc from '@/assets/character-front.png';
 import charBackSrc from '@/assets/character-back.png';
 import charLeftSrc from '@/assets/character-left.png';
@@ -53,6 +54,7 @@ const monsterSrcMap: Record<string, string> = {
   demon: demonSrc,
   golem: golemSrc,
   ghost: ghostSrc,
+  boss: bossSrc,
 };
 
 function getMonsterImage(type: string): HTMLImageElement | null {
@@ -646,8 +648,9 @@ export function renderMonsters(
     // Try to render monster image
     const monsterType = (m as any).type || '';
     const img = getMonsterImage(monsterType);
+    const isBoss = monsterType === 'boss';
     if (img) {
-      const size = 38;
+      const size = isBoss ? 52 : 38;
       ctx.drawImage(img, sx - size / 2, sy - size + 5 + floatY, size, size);
     } else {
       // Fallback to circle + emoji
