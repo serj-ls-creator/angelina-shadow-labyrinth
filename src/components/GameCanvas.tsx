@@ -744,7 +744,7 @@ export default function GameCanvas() {
         targetRef.current = walkPath[walkPath.length - 1];
       }
     }
-  }, [currentDialogue, npcs, transitioning, switchMap, startCombat, combat.active, gameWon, startDialogue, showShop, showInventory]);
+  }, [currentDialogue, npcs, transitioning, switchMap, startCombat, combat.active, gameWon, startDialogue, showShop, showInventory, getEnhancedWalkable]);
 
   const handleDialogueResponse = useCallback((nextId: string) => {
     const next = dialogues[nextId];
