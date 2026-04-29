@@ -103,11 +103,11 @@ function generateGreenMaze(): number[][] {
     }
   }
 
-  // Water pools
+  // Water pools — only in large rooms, with a guaranteed walkable border around them
   for (const room of rooms) {
-    if (rand() > 0.5 && room.w >= 5 && room.h >= 5) {
-      const pw = Math.floor(rand() * 3) + 2;
-      const ph = Math.floor(rand() * 3) + 2;
+    if (rand() > 0.5 && room.w >= 6 && room.h >= 6) {
+      const pw = Math.min(room.w - 4, Math.floor(rand() * 2) + 2);
+      const ph = Math.min(room.h - 4, Math.floor(rand() * 2) + 2);
       const px = room.x + Math.floor((room.w - pw) / 2);
       const py = room.y + Math.floor((room.h - ph) / 2);
       for (let dy = 0; dy < ph; dy++) {
@@ -115,6 +115,19 @@ function generateGreenMaze(): number[][] {
           map[py + dy][px + dx] = T.WATER;
         }
       }
+    }
+  }
+
+  // Add extra random passages to create loops and shortcuts (makes maze more open)
+  const extraPassages = 80;
+  for (let i = 0; i < extraPassages; i++) {
+    const x = 2 + Math.floor(rand() * (GREEN_WIDTH - 4));
+    const y = 2 + Math.floor(rand() * (GREEN_HEIGHT - 4));
+    if (map[y][x] === T.DUNGEON_WALL) {
+      // Only break wall if it separates two floor areas (creates a passage, not a hole into nothing)
+      const horiz = (map[y][x - 1] === T.DUNGEON_FLOOR && map[y][x + 1] === T.DUNGEON_FLOOR);
+      const vert = (map[y - 1][x] === T.DUNGEON_FLOOR && map[y + 1][x] === T.DUNGEON_FLOOR);
+      if (horiz || vert) map[y][x] = T.DUNGEON_FLOOR;
     }
   }
 
