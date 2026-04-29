@@ -826,7 +826,10 @@ export default function GameCanvas() {
     const pickupDist = hasItem('magnet') ? COIN_MAGNET_DIST : COIN_PICKUP_DIST;
     const map = currentMapRef.current;
 
-    const coinsArr = map === 'city' ? cityCoinsRef.current : map === 'blueDungeon' ? blueCoinsRef.current : dungeonCoinsRef.current;
+    const coinsArr = map === 'city' ? cityCoinsRef.current
+      : map === 'blueDungeon' ? blueCoinsRef.current
+      : map === 'greenDungeon' ? greenCoinsRef.current
+      : dungeonCoinsRef.current;
     let newlyCollected = 0;
     for (const coin of coinsArr) {
       if (coin.collected) continue;
