@@ -724,3 +724,39 @@ export function renderCoins(
 
   ctx.restore();
 }
+
+export function renderFloorItems(
+  ctx: CanvasRenderingContext2D,
+  items: { pos: Position; itemId: string; collected: boolean }[],
+  iconResolver: (itemId: string) => string,
+  camera: Position,
+  canvasW: number,
+  canvasH: number,
+  zoom: number,
+  time: number
+) {
+  ctx.save();
+  ctx.translate(canvasW / 2, canvasH * 0.4);
+  ctx.scale(zoom, zoom);
+  ctx.translate(-camera.x, -camera.y);
+
+  for (const it of items) {
+    if (it.collected) continue;
+    const { sx, sy } = toIso(it.pos.x, it.pos.y);
+    const floatY = Math.sin(time * 0.004 + it.pos.x * 1.3 + it.pos.y) * 3;
+
+    // Pink glow
+    ctx.fillStyle = 'rgba(255, 180, 220, 0.25)';
+    ctx.beginPath();
+    ctx.ellipse(sx, sy - 6 + floatY, 12, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(180, 255, 180, 0.18)';
+    ctx.beginPath();
+    ctx.ellipse(sx, sy - 6 + floatY, 18, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    drawEmoji(ctx, iconResolver(it.itemId), sx, sy - 10 + floatY, 14);
+  }
+
+  ctx.restore();
+}
