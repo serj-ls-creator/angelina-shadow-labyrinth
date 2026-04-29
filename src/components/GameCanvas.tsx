@@ -1069,8 +1069,10 @@ export default function GameCanvas() {
 
         // Auto-combat: check if any monster is adjacent to player
         const curMap = currentMapRef.current;
-        if ((curMap === 'dungeon' || curMap === 'blueDungeon') && !combatStartPendingRef.current) {
-          const curMonsters = curMap === 'blueDungeon' ? blueMonstersRef.current : monstersRef.current;
+        if ((curMap === 'dungeon' || curMap === 'blueDungeon' || curMap === 'greenDungeon') && !combatStartPendingRef.current) {
+          const curMonsters = curMap === 'blueDungeon' ? blueMonstersRef.current
+            : curMap === 'greenDungeon' ? greenMonstersRef.current
+            : monstersRef.current;
           const px = playerRef.current.x;
           const py = playerRef.current.y;
           for (const m of curMonsters) {
@@ -1108,14 +1110,20 @@ export default function GameCanvas() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
       const mapId = currentMapRef.current;
-      ctx.fillStyle = mapId === 'dungeon' ? 'hsl(240, 20%, 5%)' : mapId === 'blueDungeon' ? 'hsl(220, 40%, 5%)' : 'hsl(260, 25%, 8%)';
+      ctx.fillStyle = mapId === 'dungeon' ? 'hsl(240, 20%, 5%)'
+        : mapId === 'blueDungeon' ? 'hsl(220, 40%, 5%)'
+        : mapId === 'greenDungeon' ? 'hsl(130, 30%, 6%)'
+        : 'hsl(260, 25%, 8%)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       const zoom = zoomRef.current;
       renderMap(ctx, cameraRef.current, canvas.width, canvas.height, zoom, mapId);
 
       // Render coins
-      const currentCoins = mapId === 'city' ? cityCoinsRef.current : mapId === 'blueDungeon' ? blueCoinsRef.current : dungeonCoinsRef.current;
+      const currentCoins = mapId === 'city' ? cityCoinsRef.current
+        : mapId === 'blueDungeon' ? blueCoinsRef.current
+        : mapId === 'greenDungeon' ? greenCoinsRef.current
+        : dungeonCoinsRef.current;
       renderCoins(ctx, currentCoins, cameraRef.current, canvas.width, canvas.height, zoom, time);
 
       renderPathPreview(ctx, pathRef.current.slice(pathIndexRef.current), cameraRef.current, canvas.width, canvas.height, zoom, time);
@@ -1133,6 +1141,17 @@ export default function GameCanvas() {
       if (mapId === 'blueDungeon') {
         const aliveMonsters = blueMonstersRef.current.filter(m => m.isAlive);
         renderMonsters(ctx, aliveMonsters, cameraRef.current, canvas.width, canvas.height, zoom, time);
+      }
+
+      if (mapId === 'greenDungeon') {
+        const aliveMonsters = greenMonstersRef.current.filter(m => m.isAlive);
+        renderMonsters(ctx, aliveMonsters, cameraRef.current, canvas.width, canvas.height, zoom, time);
+        renderFloorItems(
+          ctx,
+          greenItemsRef.current,
+          (id) => getItemDef(id)?.icon || '❓',
+          cameraRef.current, canvas.width, canvas.height, zoom, time
+        );
       }
       
       renderCharacter(ctx, playerRef.current, cameraRef.current, canvas.width, canvas.height, zoom, charImgRef.current, charDirRef.current);
@@ -1159,7 +1178,7 @@ export default function GameCanvas() {
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (lastDist > 0) {
           const delta = (dist - lastDist) * 0.003;
-          zoomRef.current = Math.max(0.3, Math.min(1.5, zoomRef.current + delta));
+          zoomRef.current = Math.max(0.55, Math.min(1.5, zoomRef.current + delta));
         }
         lastDist = dist;
       }
@@ -1167,7 +1186,7 @@ export default function GameCanvas() {
     const handleTouchEnd = () => { lastDist = 0; };
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
-      zoomRef.current = Math.max(0.3, Math.min(1.5, zoomRef.current - e.deltaY * 0.001));
+      zoomRef.current = Math.max(0.55, Math.min(1.5, zoomRef.current - e.deltaY * 0.001));
     };
 
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
