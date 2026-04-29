@@ -315,6 +315,8 @@ export default function GameCanvas() {
     setCurrentMap('city');
     monstersRef.current = generateDungeonMonsters();
     blueMonstersRef.current = generateBlueMonsters();
+    greenMonstersRef.current = generateGreenMonsters();
+    greenItemsRef.current = generateGreenFloorItems();
     setPlayerPosState({ x: 15, y: 15 });
     setPlayerStats(createInitialPlayerStats());
     mikaPos.current = findFarthestPoint();
@@ -333,6 +335,7 @@ export default function GameCanvas() {
     cityCoinsRef.current = generateCityCoins();
     dungeonCoinsRef.current = generateDungeonCoins(dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, isDungeonWalkable, 'dungeon', 54321);
     blueCoinsRef.current = generateDungeonCoins(blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, isBlueWalkable, 'blueDungeon', 11111);
+    greenCoinsRef.current = generateDungeonCoins(greenDungeonTiles, GREEN_WIDTH, GREEN_HEIGHT, isGreenWalkable, 'blueDungeon', 22222);
     const { sx, sy } = toIso(15, 15);
     cameraRef.current = { x: sx, y: sy };
   }, []);
