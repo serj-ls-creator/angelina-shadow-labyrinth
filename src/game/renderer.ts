@@ -2,6 +2,7 @@ import { Position, TileType, MapId } from './types';
 import { mapTiles, MAP_WIDTH, MAP_HEIGHT, TILE_SIZE, getTileColor, getBuildingHeight } from './mapData';
 import { dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, getDungeonTileColor, getDungeonBuildingHeight } from './dungeonMapData';
 import { blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, getBlueTileColor, getBlueBuildingHeight } from './blueDungeonMapData';
+import { greenDungeonTiles, GREEN_WIDTH, GREEN_HEIGHT, getGreenTileColor, getGreenBuildingHeight } from './greenDungeonMapData';
 import skeletonSrc from '@/assets/monster-skeleton.png';
 import slimeSrc from '@/assets/monster-slime.png';
 import demonSrc from '@/assets/monster-demon.png';
@@ -142,6 +143,9 @@ function getMapData(mapId: MapId) {
   if (mapId === 'blueDungeon') {
     return { tiles: blueDungeonTiles, width: BLUE_WIDTH, height: BLUE_HEIGHT };
   }
+  if (mapId === 'greenDungeon') {
+    return { tiles: greenDungeonTiles, width: GREEN_WIDTH, height: GREEN_HEIGHT };
+  }
   return { tiles: mapTiles, width: MAP_WIDTH, height: MAP_HEIGHT };
 }
 
@@ -178,7 +182,7 @@ export function renderMap(
   const maxTileY = Math.min(height - 1, Math.ceil(Math.max(botLeft.y, botRight.y)) + 2);
 
   // Set shared stroke state once
-  const isDungeon = mapId === 'dungeon' || mapId === 'blueDungeon';
+  const isDungeon = mapId === 'dungeon' || mapId === 'blueDungeon' || mapId === 'greenDungeon';
   ctx.lineWidth = 0.5;
   const tileStroke = isDungeon ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.15)';
 
@@ -200,8 +204,9 @@ function renderTile(
   tileX: number, tileY: number, mapId: MapId, isDungeon: boolean, tileStroke: string
 ) {
   const isBlue = mapId === 'blueDungeon';
-  const color = isBlue ? getBlueTileColor(tile) : isDungeon ? getDungeonTileColor(tile) : getTileColor(tile);
-  const height = isBlue ? getBlueBuildingHeight(tile) : isDungeon ? getDungeonBuildingHeight(tile) : getBuildingHeight(tile, tileX, tileY);
+  const isGreen = mapId === 'greenDungeon';
+  const color = isGreen ? getGreenTileColor(tile) : isBlue ? getBlueTileColor(tile) : isDungeon ? getDungeonTileColor(tile) : getTileColor(tile);
+  const height = isGreen ? getGreenBuildingHeight(tile) : isBlue ? getBlueBuildingHeight(tile) : isDungeon ? getDungeonBuildingHeight(tile) : getBuildingHeight(tile, tileX, tileY);
 
   // Diamond base
   ctx.beginPath();
