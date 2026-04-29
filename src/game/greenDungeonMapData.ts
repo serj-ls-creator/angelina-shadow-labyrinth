@@ -97,9 +97,9 @@ function generateGreenMaze(): number[][] {
     for (let x = 1; x < GREEN_WIDTH - 1; x++) {
       if (map[y][x] !== T.DUNGEON_FLOOR) continue;
       const r = rand();
-      if (r > 0.9) map[y][x] = T.DUNGEON_MOSS;
-      else if (r > 0.88) map[y][x] = T.CRYSTAL;
-      else if (r > 0.875) map[y][x] = T.DUNGEON_BONES;
+      if (r > 0.92) map[y][x] = T.DUNGEON_MOSS;
+      else if (r > 0.915) map[y][x] = T.DUNGEON_BONES;
+      // Note: CRYSTAL removed from random floor decoration to keep corridors passable
     }
   }
 
