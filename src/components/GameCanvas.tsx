@@ -899,11 +899,12 @@ export default function GameCanvas() {
     const slowMult = isSlowed ? 0.5 : 1;
 
     const isBlue = curMap === 'blueDungeon';
-    const mapTilesArr = isBlue ? blueDungeonTiles : dungeonTiles;
-    const walkCheck = isBlue ? isBlueWalkable : isDungeonWalkable;
-    const mWidth = isBlue ? BLUE_WIDTH : DUNGEON_WIDTH;
-    const mHeight = isBlue ? BLUE_HEIGHT : DUNGEON_HEIGHT;
-    const currentMonstersRef = isBlue ? blueMonstersRef : monstersRef;
+    const isGreen = curMap === 'greenDungeon';
+    const mapTilesArr = isBlue ? blueDungeonTiles : isGreen ? greenDungeonTiles : dungeonTiles;
+    const walkCheck = isBlue ? isBlueWalkable : isGreen ? isGreenWalkable : isDungeonWalkable;
+    const mWidth = isBlue ? BLUE_WIDTH : isGreen ? GREEN_WIDTH : DUNGEON_WIDTH;
+    const mHeight = isBlue ? BLUE_HEIGHT : isGreen ? GREEN_HEIGHT : DUNGEON_HEIGHT;
+    const currentMonstersRef = isBlue ? blueMonstersRef : isGreen ? greenMonstersRef : monstersRef;
 
     const isWalkableAt = (x: number, y: number) => {
       const tx = Math.floor(x), ty = Math.floor(y);
