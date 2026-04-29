@@ -682,9 +682,11 @@ export default function GameCanvas() {
       }
     }
 
-    // Check monster interaction (dungeon or blueDungeon)
-    if (currentMapRef.current === 'dungeon' || currentMapRef.current === 'blueDungeon') {
-      const curMonsters = currentMapRef.current === 'blueDungeon' ? blueMonstersRef.current : monstersRef.current;
+    // Check monster interaction (any dungeon)
+    if (currentMapRef.current === 'dungeon' || currentMapRef.current === 'blueDungeon' || currentMapRef.current === 'greenDungeon') {
+      const curMonsters = currentMapRef.current === 'blueDungeon' ? blueMonstersRef.current
+        : currentMapRef.current === 'greenDungeon' ? greenMonstersRef.current
+        : monstersRef.current;
       for (const monster of curMonsters) {
         if (!monster.isAlive) continue;
         const dx = monster.pos.x - tileX;
