@@ -857,12 +857,30 @@ export default function GameCanvas() {
         blueDungeonTiles[bowPos.y][bowPos.x] = TileType.DUNGEON_FLOOR;
       }
     }
-  }, [hasItem, hasBow]);
 
-  // Monster AI update - works for both dungeons
+    // Check floor item pickup in green dungeon
+    if (map === 'greenDungeon') {
+      for (const it of greenItemsRef.current) {
+        if (it.collected) continue;
+        const dist = Math.hypot(it.pos.x - px, it.pos.y - py);
+        if (dist < pickupDist) {
+          it.collected = true;
+          addToInventory(it.itemId);
+          playCoinSound();
+          const def = getItemDef(it.itemId);
+          if (def) {
+            setLootMessage(`${def.icon} ${def.name}`);
+            setTimeout(() => setLootMessage(null), 2000);
+          }
+        }
+      }
+    }
+  }, [hasItem, hasBow, addToInventory]);
+
+  // Monster AI update - works for all dungeons
   const updateMonsterAI = useCallback((time: number, dt: number) => {
     const curMap = currentMapRef.current;
-    if (curMap !== 'dungeon' && curMap !== 'blueDungeon') return;
+    if (curMap !== 'dungeon' && curMap !== 'blueDungeon' && curMap !== 'greenDungeon') return;
     if (combat.active) return;
 
     const isFrozen = activeEffects.some(e =>
