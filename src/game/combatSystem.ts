@@ -1,6 +1,7 @@
 import { Position, TileType } from './types';
 import { dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, isDungeonWalkable } from './dungeonMapData';
 import { blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, isBlueWalkable } from './blueDungeonMapData';
+import { greenDungeonTiles, GREEN_WIDTH, GREEN_HEIGHT, isGreenWalkable } from './greenDungeonMapData';
 
 export interface Monster {
   id: string;
@@ -88,6 +89,10 @@ export function generateDungeonMonsters(): Monster[] {
 
 export function generateBlueMonsters(): Monster[] {
   return generateMonstersForMap(blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, isBlueWalkable, 55555, 'bmonster');
+}
+
+export function generateGreenMonsters(): Monster[] {
+  return generateMonstersForMap(greenDungeonTiles, GREEN_WIDTH, GREEN_HEIGHT, isGreenWalkable, 33333, 'gmonster');
 }
 
 function generateMonstersForMap(
