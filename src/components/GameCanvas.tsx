@@ -395,6 +395,7 @@ export default function GameCanvas() {
         const mId = prev.monster!.id;
         monstersRef.current = monstersRef.current.map(m => m.id === mId ? { ...m, isAlive: false, hp: 0 } : m);
         blueMonstersRef.current = blueMonstersRef.current.map(m => m.id === mId ? { ...m, isAlive: false, hp: 0 } : m);
+        greenMonstersRef.current = greenMonstersRef.current.map(m => m.id === mId ? { ...m, isAlive: false, hp: 0 } : m);
         const xpGain = prev.monster.xpReward;
         
         // Generate loot
@@ -461,6 +462,7 @@ export default function GameCanvas() {
           const syncId = c.monster.id;
           monstersRef.current = monstersRef.current.map(m => m.id === syncId ? { ...m, hp: syncHp } : m);
           blueMonstersRef.current = blueMonstersRef.current.map(m => m.id === syncId ? { ...m, hp: syncHp } : m);
+          greenMonstersRef.current = greenMonstersRef.current.map(m => m.id === syncId ? { ...m, hp: syncHp } : m);
 
           return {
             ...c,
@@ -475,6 +477,7 @@ export default function GameCanvas() {
       const mId = prev.monster.id;
       monstersRef.current = monstersRef.current.map(m => m.id === mId ? { ...m, hp: newMonsterHp } : m);
       blueMonstersRef.current = blueMonstersRef.current.map(m => m.id === mId ? { ...m, hp: newMonsterHp } : m);
+      greenMonstersRef.current = greenMonstersRef.current.map(m => m.id === mId ? { ...m, hp: newMonsterHp } : m);
 
       return { ...prev, monster: { ...prev.monster, hp: newMonsterHp }, log, playerTurn: false };
     });
