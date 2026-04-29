@@ -337,7 +337,7 @@ function renderTile(
   }
 
   // Portal glow on specific buildings
-  if (!isDungeon && tile === TileType.BUILDING_RED && ((tileX === 23 && tileY === 6) || (tileX === 8 && tileY === 4) || (tileX === 9 && tileY === 4))) {
+  if (!isDungeon && tile === TileType.BUILDING_RED && ((tileX === 23 && tileY === 6) || (tileX === 8 && tileY === 4) || (tileX === 9 && tileY === 4) || (tileX === 36 && tileY === 26))) {
     ctx.fillStyle = 'rgba(156,39,176,0.5)';
     ctx.beginPath();
     ctx.ellipse(sx, sy - height / 2, 8, 12, 0, 0, Math.PI * 2);
