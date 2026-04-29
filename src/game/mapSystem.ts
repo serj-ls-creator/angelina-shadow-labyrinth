@@ -2,6 +2,7 @@ import { MapId, Portal, Position, TileType } from './types';
 import { mapTiles, MAP_WIDTH, MAP_HEIGHT, isWalkable } from './mapData';
 import { dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, isDungeonWalkable, getDungeonSpawnPos, getDungeonPortalPos } from './dungeonMapData';
 import { blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, isBlueWalkable, getBlueSpawnPos, getBluePortalPos } from './blueDungeonMapData';
+import { greenDungeonTiles, GREEN_WIDTH, GREEN_HEIGHT, isGreenWalkable, getGreenSpawnPos, getGreenPortalPos } from './greenDungeonMapData';
 
 // Portal: red building near green zone at (23, 6) -> dungeon
 export const CITY_PORTAL_TILE = { x: 23, y: 5 };
@@ -10,6 +11,10 @@ export const CITY_PORTAL_ENTRY = { x: 23, y: 6 };
 // Portal: red building near old lady at (8, 4) -> blue dungeon
 export const BLUE_PORTAL_TILE = { x: 8, y: 3 };
 export const BLUE_PORTAL_ENTRY = { x: 8, y: 4 };
+
+// Portal: red building near museum -> green dungeon
+export const GREEN_PORTAL_TILE = { x: 36, y: 26 };
+export const GREEN_PORTAL_ENTRY = { x: 36, y: 25 };
 
 export const portals: Portal[] = [
   // City -> Dungeon (red building near green zone)
@@ -27,6 +32,14 @@ export const portals: Portal[] = [
     fromPos: BLUE_PORTAL_TILE,
     toPos: getBlueSpawnPos(),
     tilePos: BLUE_PORTAL_ENTRY,
+  },
+  // City -> Green Dungeon (red building near museum)
+  {
+    fromMap: 'city',
+    toMap: 'greenDungeon',
+    fromPos: GREEN_PORTAL_TILE,
+    toPos: getGreenSpawnPos(),
+    tilePos: GREEN_PORTAL_ENTRY,
   },
 ];
 
@@ -49,6 +62,15 @@ portals.push({
   tilePos: bp,
 });
 
+const gp = getGreenPortalPos();
+portals.push({
+  fromMap: 'greenDungeon',
+  toMap: 'city',
+  fromPos: gp,
+  toPos: { x: GREEN_PORTAL_ENTRY.x, y: GREEN_PORTAL_ENTRY.y },
+  tilePos: gp,
+});
+
 export function getCurrentMapData(mapId: MapId) {
   if (mapId === 'dungeon') {
     return {
@@ -66,20 +88,20 @@ export function getCurrentMapData(mapId: MapId) {
       isWalkable: isBlueWalkable,
     };
   }
+  if (mapId === 'greenDungeon') {
+    return {
+      tiles: greenDungeonTiles,
+      width: GREEN_WIDTH,
+      height: GREEN_HEIGHT,
+      isWalkable: isGreenWalkable,
+    };
+  }
   return {
     tiles: mapTiles,
     width: MAP_WIDTH,
     height: MAP_HEIGHT,
     isWalkable,
   };
-}
-
-export function findPortalAt(mapId: MapId, tileX: number, tileY: number): Portal | undefined {
-  return portals.find(p => 
-    p.fromMap === mapId && 
-    Math.abs(p.tilePos.x - tileX) <= 1 && 
-    Math.abs(p.tilePos.y - tileY) <= 1
-  );
 }
 
 export function findPortalNearby(mapId: MapId, pos: Position, radius: number = 1.5): Portal | undefined {

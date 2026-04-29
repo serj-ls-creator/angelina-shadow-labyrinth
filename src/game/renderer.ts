@@ -2,6 +2,7 @@ import { Position, TileType, MapId } from './types';
 import { mapTiles, MAP_WIDTH, MAP_HEIGHT, TILE_SIZE, getTileColor, getBuildingHeight } from './mapData';
 import { dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, getDungeonTileColor, getDungeonBuildingHeight } from './dungeonMapData';
 import { blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, getBlueTileColor, getBlueBuildingHeight } from './blueDungeonMapData';
+import { greenDungeonTiles, GREEN_WIDTH, GREEN_HEIGHT, getGreenTileColor, getGreenBuildingHeight } from './greenDungeonMapData';
 import skeletonSrc from '@/assets/monster-skeleton.png';
 import slimeSrc from '@/assets/monster-slime.png';
 import demonSrc from '@/assets/monster-demon.png';
@@ -142,6 +143,9 @@ function getMapData(mapId: MapId) {
   if (mapId === 'blueDungeon') {
     return { tiles: blueDungeonTiles, width: BLUE_WIDTH, height: BLUE_HEIGHT };
   }
+  if (mapId === 'greenDungeon') {
+    return { tiles: greenDungeonTiles, width: GREEN_WIDTH, height: GREEN_HEIGHT };
+  }
   return { tiles: mapTiles, width: MAP_WIDTH, height: MAP_HEIGHT };
 }
 
@@ -178,7 +182,7 @@ export function renderMap(
   const maxTileY = Math.min(height - 1, Math.ceil(Math.max(botLeft.y, botRight.y)) + 2);
 
   // Set shared stroke state once
-  const isDungeon = mapId === 'dungeon' || mapId === 'blueDungeon';
+  const isDungeon = mapId === 'dungeon' || mapId === 'blueDungeon' || mapId === 'greenDungeon';
   ctx.lineWidth = 0.5;
   const tileStroke = isDungeon ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.15)';
 
@@ -200,8 +204,9 @@ function renderTile(
   tileX: number, tileY: number, mapId: MapId, isDungeon: boolean, tileStroke: string
 ) {
   const isBlue = mapId === 'blueDungeon';
-  const color = isBlue ? getBlueTileColor(tile) : isDungeon ? getDungeonTileColor(tile) : getTileColor(tile);
-  const height = isBlue ? getBlueBuildingHeight(tile) : isDungeon ? getDungeonBuildingHeight(tile) : getBuildingHeight(tile, tileX, tileY);
+  const isGreen = mapId === 'greenDungeon';
+  const color = isGreen ? getGreenTileColor(tile) : isBlue ? getBlueTileColor(tile) : isDungeon ? getDungeonTileColor(tile) : getTileColor(tile);
+  const height = isGreen ? getGreenBuildingHeight(tile) : isBlue ? getBlueBuildingHeight(tile) : isDungeon ? getDungeonBuildingHeight(tile) : getBuildingHeight(tile, tileX, tileY);
 
   // Diamond base
   ctx.beginPath();
@@ -337,7 +342,7 @@ function renderTile(
   }
 
   // Portal glow on specific buildings
-  if (!isDungeon && tile === TileType.BUILDING_RED && ((tileX === 23 && tileY === 6) || (tileX === 8 && tileY === 4) || (tileX === 9 && tileY === 4))) {
+  if (!isDungeon && tile === TileType.BUILDING_RED && ((tileX === 23 && tileY === 6) || (tileX === 8 && tileY === 4) || (tileX === 9 && tileY === 4) || (tileX === 36 && tileY === 26))) {
     ctx.fillStyle = 'rgba(156,39,176,0.5)';
     ctx.beginPath();
     ctx.ellipse(sx, sy - height / 2, 8, 12, 0, 0, Math.PI * 2);
@@ -715,6 +720,42 @@ export function renderCoins(
     ctx.fill();
 
     drawEmoji(ctx, '🪙', sx, sy - 8 + floatY, 14);
+  }
+
+  ctx.restore();
+}
+
+export function renderFloorItems(
+  ctx: CanvasRenderingContext2D,
+  items: { pos: Position; itemId: string; collected: boolean }[],
+  iconResolver: (itemId: string) => string,
+  camera: Position,
+  canvasW: number,
+  canvasH: number,
+  zoom: number,
+  time: number
+) {
+  ctx.save();
+  ctx.translate(canvasW / 2, canvasH * 0.4);
+  ctx.scale(zoom, zoom);
+  ctx.translate(-camera.x, -camera.y);
+
+  for (const it of items) {
+    if (it.collected) continue;
+    const { sx, sy } = toIso(it.pos.x, it.pos.y);
+    const floatY = Math.sin(time * 0.004 + it.pos.x * 1.3 + it.pos.y) * 3;
+
+    // Pink glow
+    ctx.fillStyle = 'rgba(255, 180, 220, 0.25)';
+    ctx.beginPath();
+    ctx.ellipse(sx, sy - 6 + floatY, 12, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(180, 255, 180, 0.18)';
+    ctx.beginPath();
+    ctx.ellipse(sx, sy - 6 + floatY, 18, 9, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    drawEmoji(ctx, iconResolver(it.itemId), sx, sy - 10 + floatY, 14);
   }
 
   ctx.restore();

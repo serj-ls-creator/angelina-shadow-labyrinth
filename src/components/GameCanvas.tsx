@@ -1,14 +1,15 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { Position, MapId } from '../game/types';
 import { findPath } from '../game/pathfinding';
-import { renderMap, renderCharacter, renderNPCs, renderPathPreview, renderMonsters, renderMika, renderCoins, toIso, fromIso, preloadCharDirections, getCharDirection, CharDirection } from '../game/renderer';
+import { renderMap, renderCharacter, renderNPCs, renderPathPreview, renderMonsters, renderMika, renderCoins, renderFloorItems, toIso, fromIso, preloadCharDirections, getCharDirection, CharDirection } from '../game/renderer';
 import { npcs as npcData } from '../game/dialogueData';
 import { NPC, DialogueNode, QuestEntry } from '../game/types';
 import { dialogues } from '../game/dialogueData';
 import { getCurrentMapData, findPortalNearby } from '../game/mapSystem';
-import { Monster, CombatState, PlayerCombatStats, generateDungeonMonsters, generateBlueMonsters, createInitialPlayerStats, performAttack, getXpForLevel, hasLineOfSight, getRandomPatrolTarget, findFarthestPoint } from '../game/combatSystem';
+import { Monster, CombatState, PlayerCombatStats, generateDungeonMonsters, generateBlueMonsters, generateGreenMonsters, createInitialPlayerStats, performAttack, getXpForLevel, hasLineOfSight, getRandomPatrolTarget, findFarthestPoint } from '../game/combatSystem';
 import { isDungeonWalkable, dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT } from '../game/dungeonMapData';
 import { isBlueWalkable, blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, getBlueBowPos } from '../game/blueDungeonMapData';
+import { isGreenWalkable, greenDungeonTiles, GREEN_WIDTH, GREEN_HEIGHT, generateGreenFloorItems, FloorItem } from '../game/greenDungeonMapData';
 import { useIsMobile } from '../hooks/use-mobile';
 import { InventoryItem, Coin, generateCityCoins, generateDungeonCoins, generateMonsterLoot, getItemDef, ActiveEffect } from '../game/inventorySystem';
 import { TileType } from '../game/types';
@@ -87,12 +88,19 @@ export default function GameCanvas() {
   const blueCoinsRef = useRef<Coin[]>(
     generateDungeonCoins(blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, isBlueWalkable, 'blueDungeon', 11111)
   );
+  const greenCoinsRef = useRef<Coin[]>(
+    generateDungeonCoins(greenDungeonTiles, GREEN_WIDTH, GREEN_HEIGHT, isGreenWalkable, 'blueDungeon', 22222)
+  );
 
   // Mika position
   const mikaPos = useRef<Position>(findFarthestPoint());
 
   // Blue dungeon monsters
   const blueMonstersRef = useRef<Monster[]>(generateBlueMonsters());
+
+  // Green dungeon monsters & floor items
+  const greenMonstersRef = useRef<Monster[]>(generateGreenMonsters());
+  const greenItemsRef = useRef<FloorItem[]>(generateGreenFloorItems());
 
   // Bow collected state
   const [hasBow, setHasBow] = useState(false);
@@ -307,6 +315,8 @@ export default function GameCanvas() {
     setCurrentMap('city');
     monstersRef.current = generateDungeonMonsters();
     blueMonstersRef.current = generateBlueMonsters();
+    greenMonstersRef.current = generateGreenMonsters();
+    greenItemsRef.current = generateGreenFloorItems();
     setPlayerPosState({ x: 15, y: 15 });
     setPlayerStats(createInitialPlayerStats());
     mikaPos.current = findFarthestPoint();
@@ -325,6 +335,7 @@ export default function GameCanvas() {
     cityCoinsRef.current = generateCityCoins();
     dungeonCoinsRef.current = generateDungeonCoins(dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, isDungeonWalkable, 'dungeon', 54321);
     blueCoinsRef.current = generateDungeonCoins(blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, isBlueWalkable, 'blueDungeon', 11111);
+    greenCoinsRef.current = generateDungeonCoins(greenDungeonTiles, GREEN_WIDTH, GREEN_HEIGHT, isGreenWalkable, 'blueDungeon', 22222);
     const { sx, sy } = toIso(15, 15);
     cameraRef.current = { x: sx, y: sy };
   }, []);
@@ -384,6 +395,7 @@ export default function GameCanvas() {
         const mId = prev.monster!.id;
         monstersRef.current = monstersRef.current.map(m => m.id === mId ? { ...m, isAlive: false, hp: 0 } : m);
         blueMonstersRef.current = blueMonstersRef.current.map(m => m.id === mId ? { ...m, isAlive: false, hp: 0 } : m);
+        greenMonstersRef.current = greenMonstersRef.current.map(m => m.id === mId ? { ...m, isAlive: false, hp: 0 } : m);
         const xpGain = prev.monster.xpReward;
         
         // Generate loot
@@ -450,6 +462,7 @@ export default function GameCanvas() {
           const syncId = c.monster.id;
           monstersRef.current = monstersRef.current.map(m => m.id === syncId ? { ...m, hp: syncHp } : m);
           blueMonstersRef.current = blueMonstersRef.current.map(m => m.id === syncId ? { ...m, hp: syncHp } : m);
+          greenMonstersRef.current = greenMonstersRef.current.map(m => m.id === syncId ? { ...m, hp: syncHp } : m);
 
           return {
             ...c,
@@ -464,6 +477,7 @@ export default function GameCanvas() {
       const mId = prev.monster.id;
       monstersRef.current = monstersRef.current.map(m => m.id === mId ? { ...m, hp: newMonsterHp } : m);
       blueMonstersRef.current = blueMonstersRef.current.map(m => m.id === mId ? { ...m, hp: newMonsterHp } : m);
+      greenMonstersRef.current = greenMonstersRef.current.map(m => m.id === mId ? { ...m, hp: newMonsterHp } : m);
 
       return { ...prev, monster: { ...prev.monster, hp: newMonsterHp }, log, playerTurn: false };
     });
@@ -671,9 +685,11 @@ export default function GameCanvas() {
       }
     }
 
-    // Check monster interaction (dungeon or blueDungeon)
-    if (currentMapRef.current === 'dungeon' || currentMapRef.current === 'blueDungeon') {
-      const curMonsters = currentMapRef.current === 'blueDungeon' ? blueMonstersRef.current : monstersRef.current;
+    // Check monster interaction (any dungeon)
+    if (currentMapRef.current === 'dungeon' || currentMapRef.current === 'blueDungeon' || currentMapRef.current === 'greenDungeon') {
+      const curMonsters = currentMapRef.current === 'blueDungeon' ? blueMonstersRef.current
+        : currentMapRef.current === 'greenDungeon' ? greenMonstersRef.current
+        : monstersRef.current;
       for (const monster of curMonsters) {
         if (!monster.isAlive) continue;
         const dx = monster.pos.x - tileX;
@@ -813,7 +829,10 @@ export default function GameCanvas() {
     const pickupDist = hasItem('magnet') ? COIN_MAGNET_DIST : COIN_PICKUP_DIST;
     const map = currentMapRef.current;
 
-    const coinsArr = map === 'city' ? cityCoinsRef.current : map === 'blueDungeon' ? blueCoinsRef.current : dungeonCoinsRef.current;
+    const coinsArr = map === 'city' ? cityCoinsRef.current
+      : map === 'blueDungeon' ? blueCoinsRef.current
+      : map === 'greenDungeon' ? greenCoinsRef.current
+      : dungeonCoinsRef.current;
     let newlyCollected = 0;
     for (const coin of coinsArr) {
       if (coin.collected) continue;
@@ -841,12 +860,30 @@ export default function GameCanvas() {
         blueDungeonTiles[bowPos.y][bowPos.x] = TileType.DUNGEON_FLOOR;
       }
     }
-  }, [hasItem, hasBow]);
 
-  // Monster AI update - works for both dungeons
+    // Check floor item pickup in green dungeon
+    if (map === 'greenDungeon') {
+      for (const it of greenItemsRef.current) {
+        if (it.collected) continue;
+        const dist = Math.hypot(it.pos.x - px, it.pos.y - py);
+        if (dist < pickupDist) {
+          it.collected = true;
+          addToInventory(it.itemId);
+          playCoinSound();
+          const def = getItemDef(it.itemId);
+          if (def) {
+            setLootMessage(`${def.icon} ${def.name}`);
+            setTimeout(() => setLootMessage(null), 2000);
+          }
+        }
+      }
+    }
+  }, [hasItem, hasBow, addToInventory]);
+
+  // Monster AI update - works for all dungeons
   const updateMonsterAI = useCallback((time: number, dt: number) => {
     const curMap = currentMapRef.current;
-    if (curMap !== 'dungeon' && curMap !== 'blueDungeon') return;
+    if (curMap !== 'dungeon' && curMap !== 'blueDungeon' && curMap !== 'greenDungeon') return;
     if (combat.active) return;
 
     const isFrozen = activeEffects.some(e =>
@@ -865,11 +902,12 @@ export default function GameCanvas() {
     const slowMult = isSlowed ? 0.5 : 1;
 
     const isBlue = curMap === 'blueDungeon';
-    const mapTilesArr = isBlue ? blueDungeonTiles : dungeonTiles;
-    const walkCheck = isBlue ? isBlueWalkable : isDungeonWalkable;
-    const mWidth = isBlue ? BLUE_WIDTH : DUNGEON_WIDTH;
-    const mHeight = isBlue ? BLUE_HEIGHT : DUNGEON_HEIGHT;
-    const currentMonstersRef = isBlue ? blueMonstersRef : monstersRef;
+    const isGreen = curMap === 'greenDungeon';
+    const mapTilesArr = isBlue ? blueDungeonTiles : isGreen ? greenDungeonTiles : dungeonTiles;
+    const walkCheck = isBlue ? isBlueWalkable : isGreen ? isGreenWalkable : isDungeonWalkable;
+    const mWidth = isBlue ? BLUE_WIDTH : isGreen ? GREEN_WIDTH : DUNGEON_WIDTH;
+    const mHeight = isBlue ? BLUE_HEIGHT : isGreen ? GREEN_HEIGHT : DUNGEON_HEIGHT;
+    const currentMonstersRef = isBlue ? blueMonstersRef : isGreen ? greenMonstersRef : monstersRef;
 
     const isWalkableAt = (x: number, y: number) => {
       const tx = Math.floor(x), ty = Math.floor(y);
@@ -1031,8 +1069,10 @@ export default function GameCanvas() {
 
         // Auto-combat: check if any monster is adjacent to player
         const curMap = currentMapRef.current;
-        if ((curMap === 'dungeon' || curMap === 'blueDungeon') && !combatStartPendingRef.current) {
-          const curMonsters = curMap === 'blueDungeon' ? blueMonstersRef.current : monstersRef.current;
+        if ((curMap === 'dungeon' || curMap === 'blueDungeon' || curMap === 'greenDungeon') && !combatStartPendingRef.current) {
+          const curMonsters = curMap === 'blueDungeon' ? blueMonstersRef.current
+            : curMap === 'greenDungeon' ? greenMonstersRef.current
+            : monstersRef.current;
           const px = playerRef.current.x;
           const py = playerRef.current.y;
           for (const m of curMonsters) {
@@ -1070,14 +1110,20 @@ export default function GameCanvas() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
       const mapId = currentMapRef.current;
-      ctx.fillStyle = mapId === 'dungeon' ? 'hsl(240, 20%, 5%)' : mapId === 'blueDungeon' ? 'hsl(220, 40%, 5%)' : 'hsl(260, 25%, 8%)';
+      ctx.fillStyle = mapId === 'dungeon' ? 'hsl(240, 20%, 5%)'
+        : mapId === 'blueDungeon' ? 'hsl(220, 40%, 5%)'
+        : mapId === 'greenDungeon' ? 'hsl(130, 30%, 6%)'
+        : 'hsl(260, 25%, 8%)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       const zoom = zoomRef.current;
       renderMap(ctx, cameraRef.current, canvas.width, canvas.height, zoom, mapId);
 
       // Render coins
-      const currentCoins = mapId === 'city' ? cityCoinsRef.current : mapId === 'blueDungeon' ? blueCoinsRef.current : dungeonCoinsRef.current;
+      const currentCoins = mapId === 'city' ? cityCoinsRef.current
+        : mapId === 'blueDungeon' ? blueCoinsRef.current
+        : mapId === 'greenDungeon' ? greenCoinsRef.current
+        : dungeonCoinsRef.current;
       renderCoins(ctx, currentCoins, cameraRef.current, canvas.width, canvas.height, zoom, time);
 
       renderPathPreview(ctx, pathRef.current.slice(pathIndexRef.current), cameraRef.current, canvas.width, canvas.height, zoom, time);
@@ -1095,6 +1141,17 @@ export default function GameCanvas() {
       if (mapId === 'blueDungeon') {
         const aliveMonsters = blueMonstersRef.current.filter(m => m.isAlive);
         renderMonsters(ctx, aliveMonsters, cameraRef.current, canvas.width, canvas.height, zoom, time);
+      }
+
+      if (mapId === 'greenDungeon') {
+        const aliveMonsters = greenMonstersRef.current.filter(m => m.isAlive);
+        renderMonsters(ctx, aliveMonsters, cameraRef.current, canvas.width, canvas.height, zoom, time);
+        renderFloorItems(
+          ctx,
+          greenItemsRef.current,
+          (id) => getItemDef(id)?.icon || '❓',
+          cameraRef.current, canvas.width, canvas.height, zoom, time
+        );
       }
       
       renderCharacter(ctx, playerRef.current, cameraRef.current, canvas.width, canvas.height, zoom, charImgRef.current, charDirRef.current);
@@ -1121,7 +1178,7 @@ export default function GameCanvas() {
         const dist = Math.sqrt(dx * dx + dy * dy);
         if (lastDist > 0) {
           const delta = (dist - lastDist) * 0.003;
-          zoomRef.current = Math.max(0.3, Math.min(1.5, zoomRef.current + delta));
+          zoomRef.current = Math.max(0.55, Math.min(1.5, zoomRef.current + delta));
         }
         lastDist = dist;
       }
@@ -1129,7 +1186,7 @@ export default function GameCanvas() {
     const handleTouchEnd = () => { lastDist = 0; };
     const handleWheel = (e: WheelEvent) => {
       e.preventDefault();
-      zoomRef.current = Math.max(0.3, Math.min(1.5, zoomRef.current - e.deltaY * 0.001));
+      zoomRef.current = Math.max(0.55, Math.min(1.5, zoomRef.current - e.deltaY * 0.001));
     };
 
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
@@ -1162,7 +1219,9 @@ export default function GameCanvas() {
               ? '🏙️ Повернення до міста...'
               : transitionTargetRef.current === 'blueDungeon'
                 ? '🔵 Синє підземелля...'
-                : '⚔️ Вхід до підземелля...'}
+                : transitionTargetRef.current === 'greenDungeon'
+                  ? '🟢 Зелене підземелля...'
+                  : '⚔️ Вхід до підземелля...'}
           </p>
         </div>
       )}
@@ -1200,9 +1259,9 @@ export default function GameCanvas() {
       {/* Map indicator */}
       <div className="fixed top-12 right-3 z-40">
         <div className="glass-panel px-3 py-1 rounded-full text-xs font-bold" style={{ 
-          color: currentMap === 'dungeon' ? '#e74c3c' : currentMap === 'blueDungeon' ? '#3498db' : '#4a9e5c' 
+          color: currentMap === 'dungeon' ? '#e74c3c' : currentMap === 'blueDungeon' ? '#3498db' : currentMap === 'greenDungeon' ? '#4caf50' : '#4a9e5c' 
         }}>
-          {currentMap === 'dungeon' ? '⚔️ Підземелля' : currentMap === 'blueDungeon' ? '🔵 Синє підземелля' : '🏙️ Місто'}
+          {currentMap === 'dungeon' ? '⚔️ Підземелля' : currentMap === 'blueDungeon' ? '🔵 Синє підземелля' : currentMap === 'greenDungeon' ? '🟢 Зелене підземелля' : '🏙️ Місто'}
           {hasBow && currentMap !== 'city' && ' 🎀'}
         </div>
       </div>
@@ -1214,7 +1273,7 @@ export default function GameCanvas() {
           mapTiles={mapData.tiles}
           mapWidth={mapData.width}
           mapHeight={mapData.height}
-          isDungeon={currentMap === 'dungeon' || currentMap === 'blueDungeon'}
+          isDungeon={currentMap === 'dungeon' || currentMap === 'blueDungeon' || currentMap === 'greenDungeon'}
         />
         <button
           onClick={handleRestart}

@@ -1,0 +1,234 @@
+import { TileType as T } from './types';
+
+export const GREEN_WIDTH = 120;
+export const GREEN_HEIGHT = 90;
+
+function seededRandom(seed: number): () => number {
+  let s = seed;
+  return () => {
+    s = (s * 16807 + 0) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+function generateGreenMaze(): number[][] {
+  const map: number[][] = [];
+  for (let y = 0; y < GREEN_HEIGHT; y++) {
+    map.push(new Array(GREEN_WIDTH).fill(T.DUNGEON_WALL));
+  }
+
+  const rand = seededRandom(31415);
+  const dirs = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+
+  const cellW = Math.floor((GREEN_WIDTH - 1) / 2);
+  const cellH = Math.floor((GREEN_HEIGHT - 1) / 2);
+  const visited = new Uint8Array(cellW * cellH);
+
+  const carve = (cx: number, cy: number) => { map[cy * 2 + 1][cx * 2 + 1] = T.DUNGEON_FLOOR; };
+  const carvePassage = (cx1: number, cy1: number, cx2: number, cy2: number) => {
+    map[cy1 * 2 + 1 + (cy2 - cy1)][cx1 * 2 + 1 + (cx2 - cx1)] = T.DUNGEON_FLOOR;
+  };
+
+  const stack: [number, number][] = [];
+  visited[0] = 1;
+  carve(0, 0);
+  stack.push([0, 0]);
+
+  while (stack.length > 0) {
+    const [cx, cy] = stack[stack.length - 1];
+    const neighbors: [number, number][] = [];
+    for (const [dx, dy] of dirs) {
+      const nx = cx + dx, ny = cy + dy;
+      if (nx >= 0 && nx < cellW && ny >= 0 && ny < cellH && !visited[ny * cellW + nx]) {
+        neighbors.push([nx, ny]);
+      }
+    }
+    if (neighbors.length === 0) { stack.pop(); continue; }
+    const [nx, ny] = neighbors[Math.floor(rand() * neighbors.length)];
+    visited[ny * cellW + nx] = 1;
+    carvePassage(cx, cy, nx, ny);
+    carve(nx, ny);
+    stack.push([nx, ny]);
+  }
+
+  // Open rooms
+  const rooms: { x: number; y: number; w: number; h: number }[] = [];
+  for (let i = 0; i < 18; i++) {
+    const w = Math.floor(rand() * 5) + 4;
+    const h = Math.floor(rand() * 5) + 4;
+    const rx = Math.floor(rand() * (GREEN_WIDTH - w - 4)) + 2;
+    const ry = Math.floor(rand() * (GREEN_HEIGHT - h - 4)) + 2;
+    let overlaps = false;
+    for (const r of rooms) {
+      if (rx < r.x + r.w + 2 && rx + w + 2 > r.x && ry < r.y + r.h + 2 && ry + h + 2 > r.y) {
+        overlaps = true; break;
+      }
+    }
+    if (overlaps) continue;
+    rooms.push({ x: rx, y: ry, w, h });
+    for (let dy = 0; dy < h; dy++) {
+      for (let dx = 0; dx < w; dx++) {
+        map[ry + dy][rx + dx] = T.DUNGEON_FLOOR;
+      }
+    }
+  }
+
+  // Decorate walls (mossy buildings — reusing existing tile types for visual)
+  for (let y = 1; y < GREEN_HEIGHT - 1; y++) {
+    for (let x = 1; x < GREEN_WIDTH - 1; x++) {
+      if (map[y][x] !== T.DUNGEON_WALL) continue;
+      let adjFloor = 0, adjWall = 0;
+      for (const [dx, dy] of dirs) {
+        const t = map[y + dy]?.[x + dx];
+        if (t === T.DUNGEON_FLOOR || t === T.DUNGEON_MOSS) adjFloor++;
+        if (t === T.DUNGEON_WALL) adjWall++;
+      }
+      if (adjFloor >= 1 && adjFloor <= 2 && adjWall >= 2 && rand() > 0.85) {
+        const roll = rand();
+        if (roll < 0.4) map[y][x] = T.BLUE_BUILDING_GREEN;
+        else if (roll < 0.7) map[y][x] = T.DUNGEON_BUILDING_BROWN;
+        else map[y][x] = T.BLUE_BUILDING_YELLOW;
+      }
+    }
+  }
+
+  // Floor decorations — lots of moss
+  for (let y = 1; y < GREEN_HEIGHT - 1; y++) {
+    for (let x = 1; x < GREEN_WIDTH - 1; x++) {
+      if (map[y][x] !== T.DUNGEON_FLOOR) continue;
+      const r = rand();
+      if (r > 0.9) map[y][x] = T.DUNGEON_MOSS;
+      else if (r > 0.88) map[y][x] = T.CRYSTAL;
+      else if (r > 0.875) map[y][x] = T.DUNGEON_BONES;
+    }
+  }
+
+  // Water pools
+  for (const room of rooms) {
+    if (rand() > 0.5 && room.w >= 5 && room.h >= 5) {
+      const pw = Math.floor(rand() * 3) + 2;
+      const ph = Math.floor(rand() * 3) + 2;
+      const px = room.x + Math.floor((room.w - pw) / 2);
+      const py = room.y + Math.floor((room.h - ph) / 2);
+      for (let dy = 0; dy < ph; dy++) {
+        for (let dx = 0; dx < pw; dx++) {
+          map[py + dy][px + dx] = T.WATER;
+        }
+      }
+    }
+  }
+
+  // Portal in top-left
+  map[1][1] = T.PORTAL;
+  map[1][2] = T.DUNGEON_FLOOR;
+  map[2][1] = T.DUNGEON_FLOOR;
+
+  return map;
+}
+
+export const greenDungeonTiles = generateGreenMaze();
+
+export function getGreenPortalPos(): { x: number; y: number } {
+  for (let y = 0; y < GREEN_HEIGHT; y++) {
+    for (let x = 0; x < GREEN_WIDTH; x++) {
+      if (greenDungeonTiles[y][x] === T.PORTAL) return { x, y };
+    }
+  }
+  return { x: 1, y: 1 };
+}
+
+export function getGreenSpawnPos(): { x: number; y: number } {
+  const portal = getGreenPortalPos();
+  const checkDirs = [{ x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 }];
+  for (const d of checkDirs) {
+    const nx = portal.x + d.x, ny = portal.y + d.y;
+    if (isGreenWalkable(greenDungeonTiles[ny]?.[nx])) return { x: nx, y: ny };
+  }
+  return { x: 2, y: 1 };
+}
+
+export function isGreenWalkable(tile: number): boolean {
+  return tile === T.DUNGEON_FLOOR || tile === T.DUNGEON_DOOR || tile === T.PORTAL ||
+         tile === T.DUNGEON_MOSS || tile === T.DUNGEON_BONES;
+}
+
+export function getGreenTileColor(tile: number): string {
+  switch (tile) {
+    case T.DUNGEON_FLOOR: return '#1f3a1f';
+    case T.DUNGEON_WALL: return '#0a1f0a';
+    case T.DUNGEON_DOOR: return '#3d5c2e';
+    case T.PORTAL: return '#9b59b6';
+    case T.LAVA: return '#e74c3c';
+    case T.CRYSTAL: return '#7CFC00';
+    case T.DUNGEON_MOSS: return '#2d5a2d';
+    case T.DUNGEON_BONES: return '#7a8a6a';
+    case T.WATER: return '#1a5c4a';
+    case T.BLUE_BUILDING_GREEN: return '#2d8a3a';
+    case T.BLUE_BUILDING_YELLOW: return '#a8c93a';
+    case T.DUNGEON_BUILDING_BROWN: return '#3e4a26';
+    default: return '#0a1f0a';
+  }
+}
+
+export function getGreenBuildingHeight(tile: number): number {
+  switch (tile) {
+    case T.DUNGEON_WALL: return 20;
+    case T.CRYSTAL: return 15;
+    case T.BLUE_BUILDING_GREEN: return 28;
+    case T.BLUE_BUILDING_YELLOW: return 24;
+    case T.DUNGEON_BUILDING_BROWN: return 22;
+    default: return 0;
+  }
+}
+
+// Items dropped on the floor in green dungeon
+export interface FloorItem {
+  id: string;
+  itemId: string;
+  pos: { x: number; y: number };
+  collected: boolean;
+}
+
+export function generateGreenFloorItems(): FloorItem[] {
+  // Pick 8 items spread across the dungeon
+  const candidates: { x: number; y: number }[] = [];
+  for (let y = 4; y < GREEN_HEIGHT - 2; y++) {
+    for (let x = 4; x < GREEN_WIDTH - 2; x++) {
+      if (greenDungeonTiles[y][x] === T.DUNGEON_FLOOR) {
+        candidates.push({ x, y });
+      }
+    }
+  }
+  const rand = seededRandom(8675309);
+  for (let i = candidates.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+  }
+
+  // Pool of items (a mix from each shop type)
+  const pool = [
+    'tea',         // healing
+    'donut',       // healing
+    'apple',       // healing
+    'bathbomb',    // combat
+    'megaphone',   // combat
+    'flash',       // combat
+    'watershoes',  // unusual
+    'compass',     // unusual
+    'glitter',     // unusual
+    'bearhat',     // unusual
+  ];
+
+  const items: FloorItem[] = [];
+  const count = Math.min(8, pool.length);
+  const spacing = Math.floor(candidates.length / count);
+  for (let i = 0; i < count && i * spacing < candidates.length; i++) {
+    items.push({
+      id: `gitem_${i}`,
+      itemId: pool[i % pool.length],
+      pos: candidates[i * spacing],
+      collected: false,
+    });
+  }
+  return items;
+}

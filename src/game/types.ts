@@ -40,7 +40,7 @@ export enum TileType {
   BOW_ITEM = 26,
 }
 
-export type MapId = 'city' | 'dungeon' | 'blueDungeon';
+export type MapId = 'city' | 'dungeon' | 'blueDungeon' | 'greenDungeon';
 
 export interface Portal {
   fromMap: MapId;
