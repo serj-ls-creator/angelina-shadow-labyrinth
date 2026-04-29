@@ -202,12 +202,36 @@ export interface FloorItem {
   collected: boolean;
 }
 
+// BFS from spawn — returns set of reachable tile keys "x,y"
+function computeReachable(): Set<string> {
+  const reachable = new Set<string>();
+  const spawn = getGreenSpawnPos();
+  const queue: { x: number; y: number }[] = [spawn];
+  reachable.add(`${spawn.x},${spawn.y}`);
+  const dirs4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  while (queue.length > 0) {
+    const { x, y } = queue.shift()!;
+    for (const [dx, dy] of dirs4) {
+      const nx = x + dx, ny = y + dy;
+      const key = `${nx},${ny}`;
+      if (reachable.has(key)) continue;
+      if (nx < 0 || nx >= GREEN_WIDTH || ny < 0 || ny >= GREEN_HEIGHT) continue;
+      if (!isGreenWalkable(greenDungeonTiles[ny][nx])) continue;
+      reachable.add(key);
+      queue.push({ x: nx, y: ny });
+    }
+  }
+  return reachable;
+}
+
 export function generateGreenFloorItems(): FloorItem[] {
-  // Pick 8 items spread across the dungeon
+  const reachable = computeReachable();
+
+  // Only consider floor tiles that are actually reachable from spawn
   const candidates: { x: number; y: number }[] = [];
   for (let y = 4; y < GREEN_HEIGHT - 2; y++) {
     for (let x = 4; x < GREEN_WIDTH - 2; x++) {
-      if (greenDungeonTiles[y][x] === T.DUNGEON_FLOOR) {
+      if (greenDungeonTiles[y][x] === T.DUNGEON_FLOOR && reachable.has(`${x},${y}`)) {
         candidates.push({ x, y });
       }
     }
@@ -218,23 +242,16 @@ export function generateGreenFloorItems(): FloorItem[] {
     [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
   }
 
-  // Pool of items (a mix from each shop type)
   const pool = [
-    'tea',         // healing
-    'donut',       // healing
-    'apple',       // healing
-    'bathbomb',    // combat
-    'megaphone',   // combat
-    'flash',       // combat
-    'watershoes',  // unusual
-    'compass',     // unusual
-    'glitter',     // unusual
-    'bearhat',     // unusual
+    'tea', 'donut', 'apple',
+    'bathbomb', 'megaphone', 'flash',
+    'watershoes', 'compass', 'glitter', 'bearhat',
   ];
 
   const items: FloorItem[] = [];
   const count = Math.min(8, pool.length);
-  const spacing = Math.floor(candidates.length / count);
+  if (candidates.length === 0) return items;
+  const spacing = Math.max(1, Math.floor(candidates.length / count));
   for (let i = 0; i < count && i * spacing < candidates.length; i++) {
     items.push({
       id: `gitem_${i}`,
@@ -245,3 +262,4 @@ export function generateGreenFloorItems(): FloorItem[] {
   }
   return items;
 }
+
