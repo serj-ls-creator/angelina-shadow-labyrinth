@@ -97,17 +97,17 @@ function generateGreenMaze(): number[][] {
     for (let x = 1; x < GREEN_WIDTH - 1; x++) {
       if (map[y][x] !== T.DUNGEON_FLOOR) continue;
       const r = rand();
-      if (r > 0.9) map[y][x] = T.DUNGEON_MOSS;
-      else if (r > 0.88) map[y][x] = T.CRYSTAL;
-      else if (r > 0.875) map[y][x] = T.DUNGEON_BONES;
+      if (r > 0.92) map[y][x] = T.DUNGEON_MOSS;
+      else if (r > 0.915) map[y][x] = T.DUNGEON_BONES;
+      // Note: CRYSTAL removed from random floor decoration to keep corridors passable
     }
   }
 
-  // Water pools
+  // Water pools — only in large rooms, with a guaranteed walkable border around them
   for (const room of rooms) {
-    if (rand() > 0.5 && room.w >= 5 && room.h >= 5) {
-      const pw = Math.floor(rand() * 3) + 2;
-      const ph = Math.floor(rand() * 3) + 2;
+    if (rand() > 0.5 && room.w >= 6 && room.h >= 6) {
+      const pw = Math.min(room.w - 4, Math.floor(rand() * 2) + 2);
+      const ph = Math.min(room.h - 4, Math.floor(rand() * 2) + 2);
       const px = room.x + Math.floor((room.w - pw) / 2);
       const py = room.y + Math.floor((room.h - ph) / 2);
       for (let dy = 0; dy < ph; dy++) {
@@ -115,6 +115,19 @@ function generateGreenMaze(): number[][] {
           map[py + dy][px + dx] = T.WATER;
         }
       }
+    }
+  }
+
+  // Add extra random passages to create loops and shortcuts (makes maze more open)
+  const extraPassages = 80;
+  for (let i = 0; i < extraPassages; i++) {
+    const x = 2 + Math.floor(rand() * (GREEN_WIDTH - 4));
+    const y = 2 + Math.floor(rand() * (GREEN_HEIGHT - 4));
+    if (map[y][x] === T.DUNGEON_WALL) {
+      // Only break wall if it separates two floor areas (creates a passage, not a hole into nothing)
+      const horiz = (map[y][x - 1] === T.DUNGEON_FLOOR && map[y][x + 1] === T.DUNGEON_FLOOR);
+      const vert = (map[y - 1][x] === T.DUNGEON_FLOOR && map[y + 1][x] === T.DUNGEON_FLOOR);
+      if (horiz || vert) map[y][x] = T.DUNGEON_FLOOR;
     }
   }
 
@@ -189,12 +202,36 @@ export interface FloorItem {
   collected: boolean;
 }
 
+// BFS from spawn — returns set of reachable tile keys "x,y"
+function computeReachable(): Set<string> {
+  const reachable = new Set<string>();
+  const spawn = getGreenSpawnPos();
+  const queue: { x: number; y: number }[] = [spawn];
+  reachable.add(`${spawn.x},${spawn.y}`);
+  const dirs4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  while (queue.length > 0) {
+    const { x, y } = queue.shift()!;
+    for (const [dx, dy] of dirs4) {
+      const nx = x + dx, ny = y + dy;
+      const key = `${nx},${ny}`;
+      if (reachable.has(key)) continue;
+      if (nx < 0 || nx >= GREEN_WIDTH || ny < 0 || ny >= GREEN_HEIGHT) continue;
+      if (!isGreenWalkable(greenDungeonTiles[ny][nx])) continue;
+      reachable.add(key);
+      queue.push({ x: nx, y: ny });
+    }
+  }
+  return reachable;
+}
+
 export function generateGreenFloorItems(): FloorItem[] {
-  // Pick 8 items spread across the dungeon
+  const reachable = computeReachable();
+
+  // Only consider floor tiles that are actually reachable from spawn
   const candidates: { x: number; y: number }[] = [];
   for (let y = 4; y < GREEN_HEIGHT - 2; y++) {
     for (let x = 4; x < GREEN_WIDTH - 2; x++) {
-      if (greenDungeonTiles[y][x] === T.DUNGEON_FLOOR) {
+      if (greenDungeonTiles[y][x] === T.DUNGEON_FLOOR && reachable.has(`${x},${y}`)) {
         candidates.push({ x, y });
       }
     }
@@ -205,23 +242,16 @@ export function generateGreenFloorItems(): FloorItem[] {
     [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
   }
 
-  // Pool of items (a mix from each shop type)
   const pool = [
-    'tea',         // healing
-    'donut',       // healing
-    'apple',       // healing
-    'bathbomb',    // combat
-    'megaphone',   // combat
-    'flash',       // combat
-    'watershoes',  // unusual
-    'compass',     // unusual
-    'glitter',     // unusual
-    'bearhat',     // unusual
+    'tea', 'donut', 'apple',
+    'bathbomb', 'megaphone', 'flash',
+    'watershoes', 'compass', 'glitter', 'bearhat',
   ];
 
   const items: FloorItem[] = [];
   const count = Math.min(8, pool.length);
-  const spacing = Math.floor(candidates.length / count);
+  if (candidates.length === 0) return items;
+  const spacing = Math.max(1, Math.floor(candidates.length / count));
   for (let i = 0; i < count && i * spacing < candidates.length; i++) {
     items.push({
       id: `gitem_${i}`,
@@ -232,3 +262,4 @@ export function generateGreenFloorItems(): FloorItem[] {
   }
   return items;
 }
+
