@@ -281,7 +281,7 @@ export const npcs: NPC[] = [
   {
     id: 'medicine',
     name: 'Аптекарка Оля',
-    pos: { x: 5, y: 26 },
+    pos: { x: 3, y: 26 },
     dialogueId: 'medicine_start',
     icon: '🏥',
     hasInteracted: false,
