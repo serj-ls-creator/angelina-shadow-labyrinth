@@ -334,13 +334,15 @@ export function generateGreenFloorItems(): FloorItem[] {
   }
 
   const pool = [
-    'tea', 'donut', 'apple',
-    'bathbomb', 'megaphone', 'flash',
+    'tea', 'donut', 'apple', 'tea', 'donut', 'apple',
+    'bathbomb', 'megaphone', 'flash', 'bathbomb', 'flash',
     'watershoes', 'compass', 'glitter', 'bearhat',
+    'tea', 'apple', 'donut', 'glitter', 'megaphone',
+    'bathbomb', 'compass', 'flash', 'apple',
   ];
 
   const items: FloorItem[] = [];
-  const count = Math.min(8, pool.length);
+  const count = Math.min(22, pool.length, candidates.length);
   if (candidates.length === 0) return items;
   const spacing = Math.max(1, Math.floor(candidates.length / count));
   for (let i = 0; i < count && i * spacing < candidates.length; i++) {
