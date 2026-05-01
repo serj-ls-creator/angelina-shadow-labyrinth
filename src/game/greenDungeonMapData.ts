@@ -73,17 +73,18 @@ function generateGreenMaze(): number[][] {
     }
   }
 
-  // Decorate walls (mossy buildings — reusing existing tile types for visual)
+  // Decorate walls (mossy buildings) — only on walls that have NO adjacent floor
+  // so they never block corridors. They're purely visual on solid wall blocks.
   for (let y = 1; y < GREEN_HEIGHT - 1; y++) {
     for (let x = 1; x < GREEN_WIDTH - 1; x++) {
       if (map[y][x] !== T.DUNGEON_WALL) continue;
-      let adjFloor = 0, adjWall = 0;
+      let adjFloor = 0;
       for (const [dx, dy] of dirs) {
         const t = map[y + dy]?.[x + dx];
         if (t === T.DUNGEON_FLOOR || t === T.DUNGEON_MOSS) adjFloor++;
-        if (t === T.DUNGEON_WALL) adjWall++;
       }
-      if (adjFloor >= 1 && adjFloor <= 2 && adjWall >= 2 && rand() > 0.85) {
+      // Only decorate fully-enclosed walls (interior wall blocks), never corridor borders
+      if (adjFloor === 0 && rand() > 0.85) {
         const roll = rand();
         if (roll < 0.4) map[y][x] = T.BLUE_BUILDING_GREEN;
         else if (roll < 0.7) map[y][x] = T.DUNGEON_BUILDING_BROWN;
