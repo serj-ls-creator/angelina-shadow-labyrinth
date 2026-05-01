@@ -56,9 +56,9 @@ export const mapTiles: number[][] = [
   // Row 25-29: Bottom section
   [R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R],
   [R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R],
-  [S,S,B,B,S,R,R,S,B,L,S,E,R,R,S,S,B,B,S,R,R,S,B,B,S,R,R,S,S,B,B,S,R,R,S,S,X,B,S,S],
-  [S,E,B,B,S,R,R,S,B,B,S,S,R,R,S,E,B,B,S,R,R,S,B,B,S,R,R,S,E,B,B,S,R,R,S,E,B,B,S,S],
-  [S,S,B,B,S,R,R,S,B,B,S,S,R,R,S,S,B,B,S,R,R,S,B,B,S,R,R,S,S,B,B,S,R,R,S,S,B,B,S,S],
+  [S,S,H,H,S,R,R,S,B,L,S,E,R,R,S,S,O,O,S,R,R,S,B,B,S,R,R,S,S,M,M,S,R,R,S,S,X,B,S,S],
+  [S,E,H,H,S,R,R,S,B,B,S,S,R,R,S,E,O,O,S,R,R,S,B,B,S,R,R,S,E,M,M,S,R,R,S,E,B,B,S,S],
+  [S,S,H,H,S,R,R,S,B,B,S,S,R,R,S,S,O,O,S,R,R,S,B,B,S,R,R,S,S,M,M,S,R,R,S,S,B,B,S,S],
 ];
 
 // Walkable tiles
