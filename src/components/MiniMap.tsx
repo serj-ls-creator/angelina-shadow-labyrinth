@@ -34,6 +34,9 @@ export default function MiniMap({ playerPos, npcs, mapTiles, mapWidth, mapHeight
                 if (tile === TileType.WATER) fill = '#3498db';
                 else if (tile === TileType.ROAD || tile === TileType.BRIDGE) fill = '#3a3d4a';
                 else if (tile === TileType.BUILDING || tile === TileType.BUILDING_RED || tile === TileType.BUILDING_LIGHT) fill = '#6b5b3e';
+                else if (tile === TileType.BUILDING_PHARMACY) fill = '#1bb673';
+                else if (tile === TileType.BUILDING_POLICE) fill = '#1f4f9c';
+                else if (tile === TileType.BUILDING_MUSEUM) fill = '#e8dcc0';
                 else if (tile === TileType.GRASS || tile === TileType.PARK || tile === TileType.TREE) fill = '#2d7a3a';
                 else if (tile === TileType.SIDEWALK) fill = '#8a7e6e';
               }
