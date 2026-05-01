@@ -197,6 +197,22 @@ function generateGreenMaze(): number[][] {
     }
   }
 
+  // COLORED CUBES PASS — replace ~25% of plain wall tiles with vibrant colored cubes.
+  // Walls remain non-walkable; only their visual tile id changes, so layout is preserved.
+  const cubeTypes = [
+    T.GREEN_CUBE_PINK, T.GREEN_CUBE_CYAN, T.GREEN_CUBE_YELLOW,
+    T.GREEN_CUBE_RED, T.GREEN_CUBE_BLUE, T.GREEN_CUBE_ORANGE,
+  ];
+  const cubeRand = seededRandom(424242);
+  for (let y = 1; y < GREEN_HEIGHT - 1; y++) {
+    for (let x = 1; x < GREEN_WIDTH - 1; x++) {
+      if (map[y][x] !== T.DUNGEON_WALL) continue;
+      if (cubeRand() < 0.25) {
+        map[y][x] = cubeTypes[Math.floor(cubeRand() * cubeTypes.length)];
+      }
+    }
+  }
+
   return map;
 }
 
