@@ -197,6 +197,22 @@ function generateGreenMaze(): number[][] {
     }
   }
 
+  // COLORED CUBES PASS — replace ~25% of plain wall tiles with vibrant colored cubes.
+  // Walls remain non-walkable; only their visual tile id changes, so layout is preserved.
+  const cubeTypes = [
+    T.GREEN_CUBE_PINK, T.GREEN_CUBE_CYAN, T.GREEN_CUBE_YELLOW,
+    T.GREEN_CUBE_RED, T.GREEN_CUBE_BLUE, T.GREEN_CUBE_ORANGE,
+  ];
+  const cubeRand = seededRandom(424242);
+  for (let y = 1; y < GREEN_HEIGHT - 1; y++) {
+    for (let x = 1; x < GREEN_WIDTH - 1; x++) {
+      if (map[y][x] !== T.DUNGEON_WALL) continue;
+      if (cubeRand() < 0.25) {
+        map[y][x] = cubeTypes[Math.floor(cubeRand() * cubeTypes.length)];
+      }
+    }
+  }
+
   return map;
 }
 
@@ -240,6 +256,13 @@ export function getGreenTileColor(tile: number): string {
     case T.BLUE_BUILDING_GREEN: return '#2d8a3a';
     case T.BLUE_BUILDING_YELLOW: return '#a8c93a';
     case T.DUNGEON_BUILDING_BROWN: return '#3e4a26';
+    // Colored cubes — vibrant neon palette
+    case T.GREEN_CUBE_PINK: return '#ff3ea5';
+    case T.GREEN_CUBE_CYAN: return '#22d3ee';
+    case T.GREEN_CUBE_YELLOW: return '#facc15';
+    case T.GREEN_CUBE_RED: return '#ef4444';
+    case T.GREEN_CUBE_BLUE: return '#3b82f6';
+    case T.GREEN_CUBE_ORANGE: return '#fb923c';
     default: return '#0a1f0a';
   }
 }
@@ -251,6 +274,13 @@ export function getGreenBuildingHeight(tile: number): number {
     case T.BLUE_BUILDING_GREEN: return 28;
     case T.BLUE_BUILDING_YELLOW: return 24;
     case T.DUNGEON_BUILDING_BROWN: return 22;
+    case T.GREEN_CUBE_PINK:
+    case T.GREEN_CUBE_CYAN:
+    case T.GREEN_CUBE_YELLOW:
+    case T.GREEN_CUBE_RED:
+    case T.GREEN_CUBE_BLUE:
+    case T.GREEN_CUBE_ORANGE:
+      return 22;
     default: return 0;
   }
 }
@@ -304,13 +334,15 @@ export function generateGreenFloorItems(): FloorItem[] {
   }
 
   const pool = [
-    'tea', 'donut', 'apple',
-    'bathbomb', 'megaphone', 'flash',
+    'tea', 'donut', 'apple', 'tea', 'donut', 'apple',
+    'bathbomb', 'megaphone', 'flash', 'bathbomb', 'flash',
     'watershoes', 'compass', 'glitter', 'bearhat',
+    'tea', 'apple', 'donut', 'glitter', 'megaphone',
+    'bathbomb', 'compass', 'flash', 'apple',
   ];
 
   const items: FloorItem[] = [];
-  const count = Math.min(8, pool.length);
+  const count = Math.min(22, pool.length, candidates.length);
   if (candidates.length === 0) return items;
   const spacing = Math.max(1, Math.floor(candidates.length / count));
   for (let i = 0; i < count && i * spacing < candidates.length; i++) {

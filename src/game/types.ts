@@ -38,6 +38,13 @@ export enum TileType {
   BLUE_BUILDING_GREEN = 24,
   BLUE_BUILDING_PURPLE = 25,
   BOW_ITEM = 26,
+  // Green dungeon colored cube walls (decorative, non-walkable)
+  GREEN_CUBE_PINK = 27,
+  GREEN_CUBE_CYAN = 28,
+  GREEN_CUBE_YELLOW = 29,
+  GREEN_CUBE_RED = 30,
+  GREEN_CUBE_BLUE = 31,
+  GREEN_CUBE_ORANGE = 32,
 }
 
 export type MapId = 'city' | 'dungeon' | 'blueDungeon' | 'greenDungeon';
