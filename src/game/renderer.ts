@@ -381,7 +381,11 @@ function seededRand(x: number, y: number, seed: number): number {
 }
 
 function drawWindows(ctx: CanvasRenderingContext2D, sx: number, sy: number, height: number, tile: number, tileX: number, tileY: number) {
-  const litColor = tile === TileType.BUILDING_RED ? '#ffeb3b' : '#ffd54f';
+  let litColor = '#ffd54f';
+  if (tile === TileType.BUILDING_RED) litColor = '#ffeb3b';
+  else if (tile === TileType.BUILDING_PHARMACY) litColor = '#a5f3c8';
+  else if (tile === TileType.BUILDING_POLICE) litColor = '#7ab8ff';
+  else if (tile === TileType.BUILDING_MUSEUM) litColor = '#fff2c2';
   const darkColor = 'rgba(20,15,30,0.7)';
   const rows = height > 28 ? 3 : 2;
   const cols = 2;
