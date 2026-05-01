@@ -137,6 +137,66 @@ function generateGreenMaze(): number[][] {
   map[1][2] = T.DUNGEON_FLOOR;
   map[2][1] = T.DUNGEON_FLOOR;
 
+  // CONNECTIVITY PASS: ensure every floor tile is reachable from spawn (2,1).
+  // For each disconnected floor region, carve a straight tunnel to the nearest reachable tile.
+  const isFloorTile = (t: number) =>
+    t === T.DUNGEON_FLOOR || t === T.DUNGEON_MOSS || t === T.DUNGEON_BONES || t === T.PORTAL;
+
+  const floodFrom = (sx: number, sy: number): boolean[][] => {
+    const visited: boolean[][] = Array.from({ length: GREEN_HEIGHT }, () => new Array(GREEN_WIDTH).fill(false));
+    if (!isFloorTile(map[sy]?.[sx])) return visited;
+    const q: [number, number][] = [[sx, sy]];
+    visited[sy][sx] = true;
+    while (q.length) {
+      const [x, y] = q.shift()!;
+      for (const [dx, dy] of dirs) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || nx >= GREEN_WIDTH || ny < 0 || ny >= GREEN_HEIGHT) continue;
+        if (visited[ny][nx]) continue;
+        if (!isFloorTile(map[ny][nx])) continue;
+        visited[ny][nx] = true;
+        q.push([nx, ny]);
+      }
+    }
+    return visited;
+  };
+
+  for (let pass = 0; pass < 30; pass++) {
+    const reach = floodFrom(2, 1);
+    // Find an unreachable floor tile
+    let target: [number, number] | null = null;
+    for (let y = 1; y < GREEN_HEIGHT - 1 && !target; y++) {
+      for (let x = 1; x < GREEN_WIDTH - 1; x++) {
+        if (isFloorTile(map[y][x]) && !reach[y][x]) { target = [x, y]; break; }
+      }
+    }
+    if (!target) break;
+
+    // Find nearest reachable tile (Manhattan)
+    let nearest: [number, number] | null = null;
+    let bestDist = Infinity;
+    for (let y = 1; y < GREEN_HEIGHT - 1; y++) {
+      for (let x = 1; x < GREEN_WIDTH - 1; x++) {
+        if (!reach[y][x]) continue;
+        const d = Math.abs(x - target[0]) + Math.abs(y - target[1]);
+        if (d < bestDist) { bestDist = d; nearest = [x, y]; }
+      }
+    }
+    if (!nearest) break;
+
+    // Carve an L-shaped tunnel from nearest to target
+    let [cx, cy] = nearest;
+    const [tx, ty] = target;
+    while (cx !== tx) {
+      cx += cx < tx ? 1 : -1;
+      if (map[cy][cx] === T.DUNGEON_WALL || !isFloorTile(map[cy][cx])) map[cy][cx] = T.DUNGEON_FLOOR;
+    }
+    while (cy !== ty) {
+      cy += cy < ty ? 1 : -1;
+      if (map[cy][cx] === T.DUNGEON_WALL || !isFloorTile(map[cy][cx])) map[cy][cx] = T.DUNGEON_FLOOR;
+    }
+  }
+
   return map;
 }
 
