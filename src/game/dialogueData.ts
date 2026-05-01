@@ -299,7 +299,7 @@ export const npcs: NPC[] = [
   {
     id: 'museum',
     name: 'Куратор Софія',
-    pos: { x: 33, y: 26 },
+    pos: { x: 30, y: 26 },
     dialogueId: 'museum_start',
     icon: '🏛️',
     hasInteracted: false,
