@@ -79,6 +79,9 @@ export function getTileColor(tile: number): string {
     case T.GRASS: return '#4a9e5c';
     case T.BRIDGE: return '#7f8c8d';
     case T.PARK: return '#5cb85c';
+    case T.BUILDING_PHARMACY: return '#1bb673';
+    case T.BUILDING_POLICE: return '#1f4f9c';
+    case T.BUILDING_MUSEUM: return '#e8dcc0';
     default: return '#c8bfaa';
   }
 }
