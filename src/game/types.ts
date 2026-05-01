@@ -45,6 +45,10 @@ export enum TileType {
   GREEN_CUBE_RED = 30,
   GREEN_CUBE_BLUE = 31,
   GREEN_CUBE_ORANGE = 32,
+  // Special city landmark buildings
+  BUILDING_PHARMACY = 33,
+  BUILDING_POLICE = 34,
+  BUILDING_MUSEUM = 35,
 }
 
 export type MapId = 'city' | 'dungeon' | 'blueDungeon' | 'greenDungeon';
