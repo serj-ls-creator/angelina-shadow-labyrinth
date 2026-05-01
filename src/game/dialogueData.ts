@@ -290,7 +290,7 @@ export const npcs: NPC[] = [
   {
     id: 'police',
     name: 'Офіцер Макс',
-    pos: { x: 19, y: 26 },
+    pos: { x: 17, y: 26 },
     dialogueId: 'police_start',
     icon: '🛡️',
     hasInteracted: false,
