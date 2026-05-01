@@ -311,8 +311,20 @@ function renderTile(
     ctx.fillStyle = topColor;
     ctx.fill();
 
-    if (!isDungeon && (tile === TileType.BUILDING || tile === TileType.BUILDING_RED || tile === TileType.BUILDING_LIGHT)) {
+    if (!isDungeon && (tile === TileType.BUILDING || tile === TileType.BUILDING_RED || tile === TileType.BUILDING_LIGHT ||
+        tile === TileType.BUILDING_PHARMACY || tile === TileType.BUILDING_POLICE || tile === TileType.BUILDING_MUSEUM)) {
       drawWindows(ctx, sx, sy, height, tile, tileX, tileY);
+    }
+
+    // Landmark roof emblems (drawn only on the front-center tile of each landmark)
+    if (!isDungeon) {
+      if (tile === TileType.BUILDING_PHARMACY && tileX === 3 && tileY === 27) {
+        drawPharmacyEmblem(ctx, sx, sy, height);
+      } else if (tile === TileType.BUILDING_POLICE && tileX === 17 && tileY === 27) {
+        drawPoliceEmblem(ctx, sx, sy, height);
+      } else if (tile === TileType.BUILDING_MUSEUM && tileX === 30 && tileY === 27) {
+        drawMuseumEmblem(ctx, sx, sy, height);
+      }
     }
 
     if (isDungeon && (tile === TileType.DUNGEON_BUILDING_PURPLE || tile === TileType.DUNGEON_BUILDING_BROWN || tile === TileType.DUNGEON_BUILDING_ORANGE ||
