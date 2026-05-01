@@ -99,6 +99,9 @@ export function getBuildingHeight(tile: number, x?: number, y?: number): number 
     case T.BUILDING: return 30 + vary;
     case T.BUILDING_RED: return 25 + vary;
     case T.BUILDING_LIGHT: return 38 + vary;
+    case T.BUILDING_PHARMACY: return 32 + vary;
+    case T.BUILDING_POLICE: return 36 + vary;
+    case T.BUILDING_MUSEUM: return 42 + vary;
     case T.TREE: return 20;
     default: return 0;
   }
