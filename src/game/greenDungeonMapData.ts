@@ -73,17 +73,18 @@ function generateGreenMaze(): number[][] {
     }
   }
 
-  // Decorate walls (mossy buildings — reusing existing tile types for visual)
+  // Decorate walls (mossy buildings) — only on walls that have NO adjacent floor
+  // so they never block corridors. They're purely visual on solid wall blocks.
   for (let y = 1; y < GREEN_HEIGHT - 1; y++) {
     for (let x = 1; x < GREEN_WIDTH - 1; x++) {
       if (map[y][x] !== T.DUNGEON_WALL) continue;
-      let adjFloor = 0, adjWall = 0;
+      let adjFloor = 0;
       for (const [dx, dy] of dirs) {
         const t = map[y + dy]?.[x + dx];
         if (t === T.DUNGEON_FLOOR || t === T.DUNGEON_MOSS) adjFloor++;
-        if (t === T.DUNGEON_WALL) adjWall++;
       }
-      if (adjFloor >= 1 && adjFloor <= 2 && adjWall >= 2 && rand() > 0.85) {
+      // Only decorate fully-enclosed walls (interior wall blocks), never corridor borders
+      if (adjFloor === 0 && rand() > 0.85) {
         const roll = rand();
         if (roll < 0.4) map[y][x] = T.BLUE_BUILDING_GREEN;
         else if (roll < 0.7) map[y][x] = T.DUNGEON_BUILDING_BROWN;
@@ -135,6 +136,66 @@ function generateGreenMaze(): number[][] {
   map[1][1] = T.PORTAL;
   map[1][2] = T.DUNGEON_FLOOR;
   map[2][1] = T.DUNGEON_FLOOR;
+
+  // CONNECTIVITY PASS: ensure every floor tile is reachable from spawn (2,1).
+  // For each disconnected floor region, carve a straight tunnel to the nearest reachable tile.
+  const isFloorTile = (t: number) =>
+    t === T.DUNGEON_FLOOR || t === T.DUNGEON_MOSS || t === T.DUNGEON_BONES || t === T.PORTAL;
+
+  const floodFrom = (sx: number, sy: number): boolean[][] => {
+    const visited: boolean[][] = Array.from({ length: GREEN_HEIGHT }, () => new Array(GREEN_WIDTH).fill(false));
+    if (!isFloorTile(map[sy]?.[sx])) return visited;
+    const q: [number, number][] = [[sx, sy]];
+    visited[sy][sx] = true;
+    while (q.length) {
+      const [x, y] = q.shift()!;
+      for (const [dx, dy] of dirs) {
+        const nx = x + dx, ny = y + dy;
+        if (nx < 0 || nx >= GREEN_WIDTH || ny < 0 || ny >= GREEN_HEIGHT) continue;
+        if (visited[ny][nx]) continue;
+        if (!isFloorTile(map[ny][nx])) continue;
+        visited[ny][nx] = true;
+        q.push([nx, ny]);
+      }
+    }
+    return visited;
+  };
+
+  for (let pass = 0; pass < 30; pass++) {
+    const reach = floodFrom(2, 1);
+    // Find an unreachable floor tile
+    let target: [number, number] | null = null;
+    for (let y = 1; y < GREEN_HEIGHT - 1 && !target; y++) {
+      for (let x = 1; x < GREEN_WIDTH - 1; x++) {
+        if (isFloorTile(map[y][x]) && !reach[y][x]) { target = [x, y]; break; }
+      }
+    }
+    if (!target) break;
+
+    // Find nearest reachable tile (Manhattan)
+    let nearest: [number, number] | null = null;
+    let bestDist = Infinity;
+    for (let y = 1; y < GREEN_HEIGHT - 1; y++) {
+      for (let x = 1; x < GREEN_WIDTH - 1; x++) {
+        if (!reach[y][x]) continue;
+        const d = Math.abs(x - target[0]) + Math.abs(y - target[1]);
+        if (d < bestDist) { bestDist = d; nearest = [x, y]; }
+      }
+    }
+    if (!nearest) break;
+
+    // Carve an L-shaped tunnel from nearest to target
+    let [cx, cy] = nearest;
+    const [tx, ty] = target;
+    while (cx !== tx) {
+      cx += cx < tx ? 1 : -1;
+      if (map[cy][cx] === T.DUNGEON_WALL || !isFloorTile(map[cy][cx])) map[cy][cx] = T.DUNGEON_FLOOR;
+    }
+    while (cy !== ty) {
+      cy += cy < ty ? 1 : -1;
+      if (map[cy][cx] === T.DUNGEON_WALL || !isFloorTile(map[cy][cx])) map[cy][cx] = T.DUNGEON_FLOOR;
+    }
+  }
 
   return map;
 }

@@ -47,7 +47,7 @@ export default function GameCanvas() {
   const pathRef = useRef<Position[]>([]);
   const pathIndexRef = useRef(0);
   const cameraRef = useRef<Position>({ x: 0, y: 0 });
-  const zoomRef = useRef(0.7);
+  const zoomRef = useRef(1.0);
   const charDirRef = useRef<CharDirection>('front');
 
   const [currentMap, setCurrentMap] = useState<MapId>('city');
