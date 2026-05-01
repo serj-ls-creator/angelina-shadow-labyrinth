@@ -13,6 +13,9 @@ const W = T.WATER;
 const G = T.GRASS;
 const P = T.BRIDGE;
 const K = T.PARK;
+const H = T.BUILDING_PHARMACY;
+const O = T.BUILDING_POLICE;
+const M = T.BUILDING_MUSEUM;
 
 export const MAP_WIDTH = 40;
 export const MAP_HEIGHT = 30;
