@@ -13,6 +13,9 @@ const W = T.WATER;
 const G = T.GRASS;
 const P = T.BRIDGE;
 const K = T.PARK;
+const H = T.BUILDING_PHARMACY;
+const O = T.BUILDING_POLICE;
+const M = T.BUILDING_MUSEUM;
 
 export const MAP_WIDTH = 40;
 export const MAP_HEIGHT = 30;
@@ -53,9 +56,9 @@ export const mapTiles: number[][] = [
   // Row 25-29: Bottom section
   [R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R],
   [R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R,R],
-  [S,S,B,B,S,R,R,S,B,L,S,E,R,R,S,S,B,B,S,R,R,S,B,B,S,R,R,S,S,B,B,S,R,R,S,S,X,B,S,S],
-  [S,E,B,B,S,R,R,S,B,B,S,S,R,R,S,E,B,B,S,R,R,S,B,B,S,R,R,S,E,B,B,S,R,R,S,E,B,B,S,S],
-  [S,S,B,B,S,R,R,S,B,B,S,S,R,R,S,S,B,B,S,R,R,S,B,B,S,R,R,S,S,B,B,S,R,R,S,S,B,B,S,S],
+  [S,S,H,H,S,R,R,S,B,L,S,E,R,R,S,S,O,O,S,R,R,S,B,B,S,R,R,S,S,M,M,S,R,R,S,S,X,B,S,S],
+  [S,E,H,H,S,R,R,S,B,B,S,S,R,R,S,E,O,O,S,R,R,S,B,B,S,R,R,S,E,M,M,S,R,R,S,E,B,B,S,S],
+  [S,S,H,H,S,R,R,S,B,B,S,S,R,R,S,S,O,O,S,R,R,S,B,B,S,R,R,S,S,M,M,S,R,R,S,S,B,B,S,S],
 ];
 
 // Walkable tiles
@@ -76,6 +79,9 @@ export function getTileColor(tile: number): string {
     case T.GRASS: return '#4a9e5c';
     case T.BRIDGE: return '#7f8c8d';
     case T.PARK: return '#5cb85c';
+    case T.BUILDING_PHARMACY: return '#1bb673';
+    case T.BUILDING_POLICE: return '#1f4f9c';
+    case T.BUILDING_MUSEUM: return '#e8dcc0';
     default: return '#c8bfaa';
   }
 }
@@ -93,6 +99,9 @@ export function getBuildingHeight(tile: number, x?: number, y?: number): number 
     case T.BUILDING: return 30 + vary;
     case T.BUILDING_RED: return 25 + vary;
     case T.BUILDING_LIGHT: return 38 + vary;
+    case T.BUILDING_PHARMACY: return 32 + vary;
+    case T.BUILDING_POLICE: return 36 + vary;
+    case T.BUILDING_MUSEUM: return 42 + vary;
     case T.TREE: return 20;
     default: return 0;
   }

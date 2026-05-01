@@ -311,8 +311,20 @@ function renderTile(
     ctx.fillStyle = topColor;
     ctx.fill();
 
-    if (!isDungeon && (tile === TileType.BUILDING || tile === TileType.BUILDING_RED || tile === TileType.BUILDING_LIGHT)) {
+    if (!isDungeon && (tile === TileType.BUILDING || tile === TileType.BUILDING_RED || tile === TileType.BUILDING_LIGHT ||
+        tile === TileType.BUILDING_PHARMACY || tile === TileType.BUILDING_POLICE || tile === TileType.BUILDING_MUSEUM)) {
       drawWindows(ctx, sx, sy, height, tile, tileX, tileY);
+    }
+
+    // Landmark roof emblems (drawn only on the front-center tile of each landmark)
+    if (!isDungeon) {
+      if (tile === TileType.BUILDING_PHARMACY && tileX === 3 && tileY === 27) {
+        drawPharmacyEmblem(ctx, sx, sy, height);
+      } else if (tile === TileType.BUILDING_POLICE && tileX === 17 && tileY === 27) {
+        drawPoliceEmblem(ctx, sx, sy, height);
+      } else if (tile === TileType.BUILDING_MUSEUM && tileX === 30 && tileY === 27) {
+        drawMuseumEmblem(ctx, sx, sy, height);
+      }
     }
 
     if (isDungeon && (tile === TileType.DUNGEON_BUILDING_PURPLE || tile === TileType.DUNGEON_BUILDING_BROWN || tile === TileType.DUNGEON_BUILDING_ORANGE ||
@@ -368,8 +380,95 @@ function seededRand(x: number, y: number, seed: number): number {
   return n - Math.floor(n);
 }
 
+function drawPharmacyEmblem(ctx: CanvasRenderingContext2D, sx: number, sy: number, height: number) {
+  const ry = sy - height - 2;
+  // Sign plate
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(sx - 9, ry - 9, 18, 12);
+  ctx.strokeStyle = '#0c8a55';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(sx - 9, ry - 9, 18, 12);
+  // Green cross
+  ctx.fillStyle = '#1bb673';
+  ctx.fillRect(sx - 1.5, ry - 8, 3, 10);
+  ctx.fillRect(sx - 5, ry - 4.5, 10, 3);
+  // Glow
+  ctx.fillStyle = 'rgba(27,182,115,0.35)';
+  ctx.beginPath();
+  ctx.ellipse(sx, ry - 3, 14, 4, 0, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawPoliceEmblem(ctx: CanvasRenderingContext2D, sx: number, sy: number, height: number) {
+  const ry = sy - height - 2;
+  // Shield
+  ctx.fillStyle = '#1f4f9c';
+  ctx.beginPath();
+  ctx.moveTo(sx, ry - 11);
+  ctx.lineTo(sx + 7, ry - 8);
+  ctx.lineTo(sx + 7, ry - 1);
+  ctx.lineTo(sx, ry + 4);
+  ctx.lineTo(sx - 7, ry - 1);
+  ctx.lineTo(sx - 7, ry - 8);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#ffd54f';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // Star
+  ctx.fillStyle = '#ffd54f';
+  ctx.beginPath();
+  const cx = sx, cy = ry - 4;
+  for (let i = 0; i < 10; i++) {
+    const r = i % 2 === 0 ? 4 : 1.8;
+    const a = -Math.PI / 2 + (i * Math.PI) / 5;
+    const px = cx + Math.cos(a) * r;
+    const py = cy + Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fill();
+  // Blue/red flashing dots
+  ctx.fillStyle = 'rgba(255,80,80,0.8)';
+  ctx.beginPath(); ctx.arc(sx - 10, ry - 9, 1.5, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(80,140,255,0.85)';
+  ctx.beginPath(); ctx.arc(sx + 10, ry - 9, 1.5, 0, Math.PI * 2); ctx.fill();
+}
+
+function drawMuseumEmblem(ctx: CanvasRenderingContext2D, sx: number, sy: number, height: number) {
+  const ry = sy - height - 1;
+  // Pediment (triangle)
+  ctx.fillStyle = '#f4ead0';
+  ctx.beginPath();
+  ctx.moveTo(sx - 12, ry - 4);
+  ctx.lineTo(sx, ry - 12);
+  ctx.lineTo(sx + 12, ry - 4);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#a89060';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  // Architrave
+  ctx.fillStyle = '#e8dcc0';
+  ctx.fillRect(sx - 12, ry - 4, 24, 3);
+  ctx.strokeRect(sx - 12, ry - 4, 24, 3);
+  // Columns
+  ctx.fillStyle = '#fbf3dd';
+  for (let i = -2; i <= 2; i++) {
+    ctx.fillRect(sx + i * 5 - 1, ry - 1, 2, 5);
+  }
+  ctx.strokeStyle = '#b89860';
+  for (let i = -2; i <= 2; i++) {
+    ctx.strokeRect(sx + i * 5 - 1, ry - 1, 2, 5);
+  }
+}
+
 function drawWindows(ctx: CanvasRenderingContext2D, sx: number, sy: number, height: number, tile: number, tileX: number, tileY: number) {
-  const litColor = tile === TileType.BUILDING_RED ? '#ffeb3b' : '#ffd54f';
+  let litColor = '#ffd54f';
+  if (tile === TileType.BUILDING_RED) litColor = '#ffeb3b';
+  else if (tile === TileType.BUILDING_PHARMACY) litColor = '#a5f3c8';
+  else if (tile === TileType.BUILDING_POLICE) litColor = '#7ab8ff';
+  else if (tile === TileType.BUILDING_MUSEUM) litColor = '#fff2c2';
   const darkColor = 'rgba(20,15,30,0.7)';
   const rows = height > 28 ? 3 : 2;
   const cols = 2;
