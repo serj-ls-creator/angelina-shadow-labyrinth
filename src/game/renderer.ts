@@ -377,6 +377,27 @@ function renderTile(
     ctx.fill();
     drawEmoji(ctx, '🎀', sx, sy - 4, 18);
   }
+
+  // Museum: exhibit emojis on top of pedestals/walls; portal glow for entrance
+  if (isMuseum) {
+    if (tile === TileType.MUSEUM_ENTRANCE) {
+      ctx.fillStyle = 'rgba(156,39,176,0.45)';
+      ctx.beginPath();
+      ctx.ellipse(sx, sy, 14, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(220,140,255,0.5)';
+      ctx.beginPath();
+      ctx.ellipse(sx, sy, 8, 3.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      drawEmoji(ctx, '🚪', sx, sy - 6, 14);
+    } else {
+      const emoji = getMuseumExhibitEmoji(tile);
+      if (emoji) {
+        const top = sy - height + 2;
+        drawEmoji(ctx, emoji, sx, top, 14);
+      }
+    }
+  }
 }
 
 function seededRand(x: number, y: number, seed: number): number {
