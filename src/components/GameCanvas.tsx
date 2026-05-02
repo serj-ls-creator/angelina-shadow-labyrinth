@@ -1156,18 +1156,21 @@ export default function GameCanvas() {
       ctx.fillStyle = mapId === 'dungeon' ? 'hsl(240, 20%, 5%)'
         : mapId === 'blueDungeon' ? 'hsl(220, 40%, 5%)'
         : mapId === 'greenDungeon' ? 'hsl(130, 30%, 6%)'
+        : mapId === 'museum' ? 'hsl(35, 30%, 12%)'
         : 'hsl(260, 25%, 8%)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       const zoom = zoomRef.current;
       renderMap(ctx, cameraRef.current, canvas.width, canvas.height, zoom, mapId);
 
-      // Render coins
-      const currentCoins = mapId === 'city' ? cityCoinsRef.current
-        : mapId === 'blueDungeon' ? blueCoinsRef.current
-        : mapId === 'greenDungeon' ? greenCoinsRef.current
-        : dungeonCoinsRef.current;
-      renderCoins(ctx, currentCoins, cameraRef.current, canvas.width, canvas.height, zoom, time);
+      // Render coins (none in museum)
+      if (mapId !== 'museum') {
+        const currentCoins = mapId === 'city' ? cityCoinsRef.current
+          : mapId === 'blueDungeon' ? blueCoinsRef.current
+          : mapId === 'greenDungeon' ? greenCoinsRef.current
+          : dungeonCoinsRef.current;
+        renderCoins(ctx, currentCoins, cameraRef.current, canvas.width, canvas.height, zoom, time);
+      }
 
       renderPathPreview(ctx, pathRef.current.slice(pathIndexRef.current), cameraRef.current, canvas.width, canvas.height, zoom, time);
       
