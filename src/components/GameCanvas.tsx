@@ -1276,7 +1276,9 @@ export default function GameCanvas() {
                 ? '🔵 Синє підземелля...'
                 : transitionTargetRef.current === 'greenDungeon'
                   ? '🟢 Зелене підземелля...'
-                  : '⚔️ Вхід до підземелля...'}
+                  : transitionTargetRef.current === 'museum'
+                    ? '🏛️ Вхід до музею...'
+                    : '⚔️ Вхід до підземелля...'}
           </p>
         </div>
       )}
