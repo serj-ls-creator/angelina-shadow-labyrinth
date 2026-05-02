@@ -1316,9 +1316,9 @@ export default function GameCanvas() {
       {/* Map indicator */}
       <div className="fixed top-12 right-3 z-40">
         <div className="glass-panel px-3 py-1 rounded-full text-xs font-bold" style={{ 
-          color: currentMap === 'dungeon' ? '#e74c3c' : currentMap === 'blueDungeon' ? '#3498db' : currentMap === 'greenDungeon' ? '#4caf50' : '#4a9e5c' 
+          color: currentMap === 'dungeon' ? '#e74c3c' : currentMap === 'blueDungeon' ? '#3498db' : currentMap === 'greenDungeon' ? '#4caf50' : currentMap === 'museum' ? '#e8c547' : '#4a9e5c' 
         }}>
-          {currentMap === 'dungeon' ? '⚔️ Підземелля' : currentMap === 'blueDungeon' ? '🔵 Синє підземелля' : currentMap === 'greenDungeon' ? '🟢 Зелене підземелля' : '🏙️ Місто'}
+          {currentMap === 'dungeon' ? '⚔️ Підземелля' : currentMap === 'blueDungeon' ? '🔵 Синє підземелля' : currentMap === 'greenDungeon' ? '🟢 Зелене підземелля' : currentMap === 'museum' ? '🏛️ Музей' : '🏙️ Місто'}
           {hasBow && currentMap !== 'city' && ' 🎀'}
         </div>
       </div>
