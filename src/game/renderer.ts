@@ -3,6 +3,7 @@ import { mapTiles, MAP_WIDTH, MAP_HEIGHT, TILE_SIZE, getTileColor, getBuildingHe
 import { dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, getDungeonTileColor, getDungeonBuildingHeight } from './dungeonMapData';
 import { blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, getBlueTileColor, getBlueBuildingHeight } from './blueDungeonMapData';
 import { greenDungeonTiles, GREEN_WIDTH, GREEN_HEIGHT, getGreenTileColor, getGreenBuildingHeight } from './greenDungeonMapData';
+import { museumTiles, MUSEUM_WIDTH, MUSEUM_HEIGHT, getMuseumTileColor, getMuseumBuildingHeight, getMuseumExhibitEmoji } from './museumMapData';
 import skeletonSrc from '@/assets/monster-skeleton.png';
 import slimeSrc from '@/assets/monster-slime.png';
 import demonSrc from '@/assets/monster-demon.png';
@@ -137,15 +138,10 @@ export function fromIso(sx: number, sy: number): { x: number; y: number } {
 }
 
 function getMapData(mapId: MapId) {
-  if (mapId === 'dungeon') {
-    return { tiles: dungeonTiles, width: DUNGEON_WIDTH, height: DUNGEON_HEIGHT };
-  }
-  if (mapId === 'blueDungeon') {
-    return { tiles: blueDungeonTiles, width: BLUE_WIDTH, height: BLUE_HEIGHT };
-  }
-  if (mapId === 'greenDungeon') {
-    return { tiles: greenDungeonTiles, width: GREEN_WIDTH, height: GREEN_HEIGHT };
-  }
+  if (mapId === 'dungeon')      return { tiles: dungeonTiles,      width: DUNGEON_WIDTH, height: DUNGEON_HEIGHT };
+  if (mapId === 'blueDungeon')  return { tiles: blueDungeonTiles,  width: BLUE_WIDTH,    height: BLUE_HEIGHT };
+  if (mapId === 'greenDungeon') return { tiles: greenDungeonTiles, width: GREEN_WIDTH,   height: GREEN_HEIGHT };
+  if (mapId === 'museum')       return { tiles: museumTiles,       width: MUSEUM_WIDTH,  height: MUSEUM_HEIGHT };
   return { tiles: mapTiles, width: MAP_WIDTH, height: MAP_HEIGHT };
 }
 
@@ -183,8 +179,9 @@ export function renderMap(
 
   // Set shared stroke state once
   const isDungeon = mapId === 'dungeon' || mapId === 'blueDungeon' || mapId === 'greenDungeon';
+  const isMuseum = mapId === 'museum';
   ctx.lineWidth = 0.5;
-  const tileStroke = isDungeon ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.15)';
+  const tileStroke = isDungeon ? 'rgba(0,0,0,0.3)' : isMuseum ? 'rgba(80,60,30,0.25)' : 'rgba(0,0,0,0.15)';
 
   for (let y = minTileY; y <= maxTileY; y++) {
     for (let x = minTileX; x <= maxTileX; x++) {
@@ -205,8 +202,15 @@ function renderTile(
 ) {
   const isBlue = mapId === 'blueDungeon';
   const isGreen = mapId === 'greenDungeon';
-  const color = isGreen ? getGreenTileColor(tile) : isBlue ? getBlueTileColor(tile) : isDungeon ? getDungeonTileColor(tile) : getTileColor(tile);
-  const height = isGreen ? getGreenBuildingHeight(tile) : isBlue ? getBlueBuildingHeight(tile) : isDungeon ? getDungeonBuildingHeight(tile) : getBuildingHeight(tile, tileX, tileY);
+  const isMuseum = mapId === 'museum';
+  const color = isMuseum ? getMuseumTileColor(tile)
+    : isGreen ? getGreenTileColor(tile)
+    : isBlue ? getBlueTileColor(tile)
+    : isDungeon ? getDungeonTileColor(tile) : getTileColor(tile);
+  const height = isMuseum ? getMuseumBuildingHeight(tile)
+    : isGreen ? getGreenBuildingHeight(tile)
+    : isBlue ? getBlueBuildingHeight(tile)
+    : isDungeon ? getDungeonBuildingHeight(tile) : getBuildingHeight(tile, tileX, tileY);
 
   // Diamond base
   ctx.beginPath();
@@ -372,6 +376,27 @@ function renderTile(
     ctx.ellipse(sx, sy, 16, 8, 0, 0, Math.PI * 2);
     ctx.fill();
     drawEmoji(ctx, '🎀', sx, sy - 4, 18);
+  }
+
+  // Museum: exhibit emojis on top of pedestals/walls; portal glow for entrance
+  if (isMuseum) {
+    if (tile === TileType.MUSEUM_ENTRANCE) {
+      ctx.fillStyle = 'rgba(156,39,176,0.45)';
+      ctx.beginPath();
+      ctx.ellipse(sx, sy, 14, 6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(220,140,255,0.5)';
+      ctx.beginPath();
+      ctx.ellipse(sx, sy, 8, 3.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      drawEmoji(ctx, '🚪', sx, sy - 6, 14);
+    } else {
+      const emoji = getMuseumExhibitEmoji(tile);
+      if (emoji) {
+        const top = sy - height + 2;
+        drawEmoji(ctx, emoji, sx, top, 14);
+      }
+    }
   }
 }
 
