@@ -179,8 +179,9 @@ export function renderMap(
 
   // Set shared stroke state once
   const isDungeon = mapId === 'dungeon' || mapId === 'blueDungeon' || mapId === 'greenDungeon';
+  const isMuseum = mapId === 'museum';
   ctx.lineWidth = 0.5;
-  const tileStroke = isDungeon ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.15)';
+  const tileStroke = isDungeon ? 'rgba(0,0,0,0.3)' : isMuseum ? 'rgba(80,60,30,0.25)' : 'rgba(0,0,0,0.15)';
 
   for (let y = minTileY; y <= maxTileY; y++) {
     for (let x = minTileX; x <= maxTileX; x++) {
