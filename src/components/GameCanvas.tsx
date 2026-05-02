@@ -635,6 +635,26 @@ export default function GameCanvas() {
     const mapData = getCurrentMapData(currentMapRef.current);
     const walkFn = getEnhancedWalkable(mapData.isWalkable);
 
+    // Click museum building -> walk to entry, then teleport inside
+    const museumPortal = findMuseumBuildingPortal(currentMapRef.current, tileX, tileY);
+    if (museumPortal) {
+      const path = findPath(
+        { x: Math.round(playerRef.current.x), y: Math.round(playerRef.current.y) },
+        { x: museumPortal.tilePos.x, y: museumPortal.tilePos.y },
+        mapData.tiles, mapData.width, mapData.height, walkFn
+      );
+      if (path.length > 1) {
+        const walkPath = path.slice(1);
+        pathRef.current = walkPath;
+        pathIndexRef.current = 0;
+        targetRef.current = walkPath[walkPath.length - 1];
+        setTimeout(() => switchMap(museumPortal.toMap, museumPortal.toPos), walkPath.length * 120);
+      } else {
+        switchMap(museumPortal.toMap, museumPortal.toPos);
+      }
+      return;
+    }
+
     // Check portal interaction
     const portal = findPortalNearby(currentMapRef.current, { x: tileX, y: tileY }, 2);
     if (portal) {
