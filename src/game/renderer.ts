@@ -202,8 +202,15 @@ function renderTile(
 ) {
   const isBlue = mapId === 'blueDungeon';
   const isGreen = mapId === 'greenDungeon';
-  const color = isGreen ? getGreenTileColor(tile) : isBlue ? getBlueTileColor(tile) : isDungeon ? getDungeonTileColor(tile) : getTileColor(tile);
-  const height = isGreen ? getGreenBuildingHeight(tile) : isBlue ? getBlueBuildingHeight(tile) : isDungeon ? getDungeonBuildingHeight(tile) : getBuildingHeight(tile, tileX, tileY);
+  const isMuseum = mapId === 'museum';
+  const color = isMuseum ? getMuseumTileColor(tile)
+    : isGreen ? getGreenTileColor(tile)
+    : isBlue ? getBlueTileColor(tile)
+    : isDungeon ? getDungeonTileColor(tile) : getTileColor(tile);
+  const height = isMuseum ? getMuseumBuildingHeight(tile)
+    : isGreen ? getGreenBuildingHeight(tile)
+    : isBlue ? getBlueBuildingHeight(tile)
+    : isDungeon ? getDungeonBuildingHeight(tile) : getBuildingHeight(tile, tileX, tileY);
 
   // Diamond base
   ctx.beginPath();
