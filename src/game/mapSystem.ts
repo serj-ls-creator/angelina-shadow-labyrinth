@@ -1,4 +1,4 @@
-import { MapId, Portal, Position, TileType } from './types';
+import { MapId, Portal, Position } from './types';
 import { mapTiles, MAP_WIDTH, MAP_HEIGHT, isWalkable } from './mapData';
 import { dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, isDungeonWalkable, getDungeonSpawnPos, getDungeonPortalPos } from './dungeonMapData';
 import { blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, isBlueWalkable, getBlueSpawnPos, getBluePortalPos } from './blueDungeonMapData';
