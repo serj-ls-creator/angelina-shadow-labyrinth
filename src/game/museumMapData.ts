@@ -62,7 +62,7 @@ export const museumTiles: number[][] = [
   // 16: bottom corridor
   [W,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,F,W],
   // 17
-  [W,L,F,N,F,F,F,F,L,F,F,F,N,F,F,F,F,N,F,F,F,L,F,F,F,N,F,F,L,W],
+  [W,F,L,N,F,F,F,F,L,F,F,F,N,F,F,F,F,N,F,F,F,L,F,F,F,N,F,L,F,W],
   // 18 — wall row with doorway to bottom feature room
   [W,F,W,W,W,W,W,C,W,W,W,W,W,W,W,W,W,W,W,W,W,C,W,W,W,W,W,W,F,W],
   // 19 — bottom feature room (big rocket / fossil hall)
@@ -177,7 +177,7 @@ export function generateMuseumFloorItems(): MuseumFloorItem[] {
     { pos: { x: 16, y: 13 }, itemId: 'bear' },         // dino/painting
     { pos: { x: 21, y: 12 }, itemId: 'perfume' },      // statue
     { pos: { x: 25, y: 13 }, itemId: 'discohat' },     // vase/mummy
-    { pos: { x: 8,  y: 17 }, itemId: 'plushbear' },    // bottom corridor
+    { pos: { x: 7,  y: 17 }, itemId: 'plushbear' },    // bottom corridor
     { pos: { x: 16, y: 20 }, itemId: 'teleport' },     // rocket hall
   ];
   return positions.map((p, i) => ({
