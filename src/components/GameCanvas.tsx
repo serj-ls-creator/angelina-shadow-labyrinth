@@ -5,11 +5,12 @@ import { renderMap, renderCharacter, renderNPCs, renderPathPreview, renderMonste
 import { npcs as npcData } from '../game/dialogueData';
 import { NPC, DialogueNode, QuestEntry } from '../game/types';
 import { dialogues } from '../game/dialogueData';
-import { getCurrentMapData, findPortalNearby } from '../game/mapSystem';
+import { getCurrentMapData, findPortalNearby, findMuseumBuildingPortal } from '../game/mapSystem';
 import { Monster, CombatState, PlayerCombatStats, generateDungeonMonsters, generateBlueMonsters, generateGreenMonsters, createInitialPlayerStats, performAttack, getXpForLevel, hasLineOfSight, getRandomPatrolTarget, findFarthestPoint } from '../game/combatSystem';
 import { isDungeonWalkable, dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT } from '../game/dungeonMapData';
 import { isBlueWalkable, blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, getBlueBowPos } from '../game/blueDungeonMapData';
 import { isGreenWalkable, greenDungeonTiles, GREEN_WIDTH, GREEN_HEIGHT, generateGreenFloorItems, FloorItem } from '../game/greenDungeonMapData';
+import { generateMuseumFloorItems, MuseumFloorItem } from '../game/museumMapData';
 import { useIsMobile } from '../hooks/use-mobile';
 import { InventoryItem, Coin, generateCityCoins, generateDungeonCoins, generateMonsterLoot, getItemDef, ActiveEffect } from '../game/inventorySystem';
 import { TileType } from '../game/types';
