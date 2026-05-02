@@ -1330,7 +1330,7 @@ export default function GameCanvas() {
           mapTiles={mapData.tiles}
           mapWidth={mapData.width}
           mapHeight={mapData.height}
-          isDungeon={currentMap === 'dungeon' || currentMap === 'blueDungeon' || currentMap === 'greenDungeon'}
+          isDungeon={currentMap === 'dungeon' || currentMap === 'blueDungeon' || currentMap === 'greenDungeon' || currentMap === 'museum'}
         />
         <button
           onClick={handleRestart}
