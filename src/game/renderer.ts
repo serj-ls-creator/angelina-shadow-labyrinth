@@ -3,6 +3,7 @@ import { mapTiles, MAP_WIDTH, MAP_HEIGHT, TILE_SIZE, getTileColor, getBuildingHe
 import { dungeonTiles, DUNGEON_WIDTH, DUNGEON_HEIGHT, getDungeonTileColor, getDungeonBuildingHeight } from './dungeonMapData';
 import { blueDungeonTiles, BLUE_WIDTH, BLUE_HEIGHT, getBlueTileColor, getBlueBuildingHeight } from './blueDungeonMapData';
 import { greenDungeonTiles, GREEN_WIDTH, GREEN_HEIGHT, getGreenTileColor, getGreenBuildingHeight } from './greenDungeonMapData';
+import { museumTiles, MUSEUM_WIDTH, MUSEUM_HEIGHT, getMuseumTileColor, getMuseumBuildingHeight, getMuseumExhibitEmoji } from './museumMapData';
 import skeletonSrc from '@/assets/monster-skeleton.png';
 import slimeSrc from '@/assets/monster-slime.png';
 import demonSrc from '@/assets/monster-demon.png';
@@ -137,15 +138,10 @@ export function fromIso(sx: number, sy: number): { x: number; y: number } {
 }
 
 function getMapData(mapId: MapId) {
-  if (mapId === 'dungeon') {
-    return { tiles: dungeonTiles, width: DUNGEON_WIDTH, height: DUNGEON_HEIGHT };
-  }
-  if (mapId === 'blueDungeon') {
-    return { tiles: blueDungeonTiles, width: BLUE_WIDTH, height: BLUE_HEIGHT };
-  }
-  if (mapId === 'greenDungeon') {
-    return { tiles: greenDungeonTiles, width: GREEN_WIDTH, height: GREEN_HEIGHT };
-  }
+  if (mapId === 'dungeon')      return { tiles: dungeonTiles,      width: DUNGEON_WIDTH, height: DUNGEON_HEIGHT };
+  if (mapId === 'blueDungeon')  return { tiles: blueDungeonTiles,  width: BLUE_WIDTH,    height: BLUE_HEIGHT };
+  if (mapId === 'greenDungeon') return { tiles: greenDungeonTiles, width: GREEN_WIDTH,   height: GREEN_HEIGHT };
+  if (mapId === 'museum')       return { tiles: museumTiles,       width: MUSEUM_WIDTH,  height: MUSEUM_HEIGHT };
   return { tiles: mapTiles, width: MAP_WIDTH, height: MAP_HEIGHT };
 }
 
