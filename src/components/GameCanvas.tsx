@@ -903,6 +903,24 @@ export default function GameCanvas() {
         }
       }
     }
+
+    // Check floor item pickup in museum
+    if (map === 'museum') {
+      for (const it of museumItemsRef.current) {
+        if (it.collected) continue;
+        const dist = Math.hypot(it.pos.x - px, it.pos.y - py);
+        if (dist < pickupDist) {
+          it.collected = true;
+          addToInventory(it.itemId);
+          playCoinSound();
+          const def = getItemDef(it.itemId);
+          if (def) {
+            setLootMessage(`${def.icon} ${def.name}`);
+            setTimeout(() => setLootMessage(null), 2000);
+          }
+        }
+      }
+    }
   }, [hasItem, hasBow, addToInventory]);
 
   // Monster AI update - works for all dungeons
