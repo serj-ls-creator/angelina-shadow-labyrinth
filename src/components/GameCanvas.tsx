@@ -1199,6 +1199,15 @@ export default function GameCanvas() {
           cameraRef.current, canvas.width, canvas.height, zoom, time
         );
       }
+
+      if (mapId === 'museum') {
+        renderFloorItems(
+          ctx,
+          museumItemsRef.current,
+          (id) => getItemDef(id)?.icon || '❓',
+          cameraRef.current, canvas.width, canvas.height, zoom, time
+        );
+      }
       
       renderCharacter(ctx, playerRef.current, cameraRef.current, canvas.width, canvas.height, zoom, charImgRef.current, charDirRef.current);
 
