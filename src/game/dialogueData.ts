@@ -296,13 +296,4 @@ export const npcs: NPC[] = [
     hasInteracted: false,
     description: 'Поліцейський арсенал',
   },
-  {
-    id: 'museum',
-    name: 'Куратор Софія',
-    pos: { x: 30, y: 26 },
-    dialogueId: 'museum_start',
-    icon: '🏛️',
-    hasInteracted: false,
-    description: 'Музей дивовижних речей',
-  },
 ];
