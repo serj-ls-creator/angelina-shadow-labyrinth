@@ -103,6 +103,9 @@ export default function GameCanvas() {
   const greenMonstersRef = useRef<Monster[]>(generateGreenMonsters());
   const greenItemsRef = useRef<FloorItem[]>(generateGreenFloorItems());
 
+  // Museum floor items
+  const museumItemsRef = useRef<MuseumFloorItem[]>(generateMuseumFloorItems());
+
   // Bow collected state
   const [hasBow, setHasBow] = useState(false);
 
