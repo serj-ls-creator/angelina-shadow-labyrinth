@@ -49,9 +49,26 @@ export enum TileType {
   BUILDING_PHARMACY = 33,
   BUILDING_POLICE = 34,
   BUILDING_MUSEUM = 35,
+  // Museum interior tiles
+  MUSEUM_FLOOR = 36,
+  MUSEUM_WALL = 37,
+  MUSEUM_CARPET = 38,
+  MUSEUM_ENTRANCE = 39,    // Portal back to city
+  EXHIBIT_DINOSAUR = 40,
+  EXHIBIT_PAINTING = 41,
+  EXHIBIT_STATUE = 42,
+  EXHIBIT_GEM = 43,
+  EXHIBIT_VASE = 44,
+  EXHIBIT_MUMMY = 45,
+  EXHIBIT_ROCKET = 46,
+  EXHIBIT_BUTTERFLY = 47,
+  EXHIBIT_ROBOT = 48,
+  EXHIBIT_FOSSIL = 49,
+  MUSEUM_BENCH = 50,
+  MUSEUM_PLANT = 51,
 }
 
-export type MapId = 'city' | 'dungeon' | 'blueDungeon' | 'greenDungeon';
+export type MapId = 'city' | 'dungeon' | 'blueDungeon' | 'greenDungeon' | 'museum';
 
 export interface Portal {
   fromMap: MapId;
