@@ -857,6 +857,7 @@ export default function GameCanvas() {
     const coinsArr = map === 'city' ? cityCoinsRef.current
       : map === 'blueDungeon' ? blueCoinsRef.current
       : map === 'greenDungeon' ? greenCoinsRef.current
+      : map === 'museum' ? []
       : dungeonCoinsRef.current;
     let newlyCollected = 0;
     for (const coin of coinsArr) {
