@@ -321,6 +321,7 @@ export default function GameCanvas() {
     blueMonstersRef.current = generateBlueMonsters();
     greenMonstersRef.current = generateGreenMonsters();
     greenItemsRef.current = generateGreenFloorItems();
+    museumItemsRef.current = generateMuseumFloorItems();
     setPlayerPosState({ x: 15, y: 15 });
     setPlayerStats(createInitialPlayerStats());
     mikaPos.current = findFarthestPoint();
